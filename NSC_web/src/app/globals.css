@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+:root {
+  --background: #effbfd;
+  --foreground: #123232;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family:
+    var(--font-sarabun), "Sarabun", "TH Sarabun New", "Noto Sans Thai",
+    "Leelawadee UI", "Segoe UI", Arial, Helvetica, sans-serif;
+  font-size: 17px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}

@@ -1,0 +1,451 @@
+// ==========================================
+// PRISMA CONFIGURATION
+// ==========================================
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum Role {
+  PATIENT
+  THERAPIST
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum QuestionType {
+  NAMING
+  COMPREHENSION_IMAGE
+  COMPREHENSION
+  REPETITION
+  SPONTANEOUS
+}
+
+enum PlanRole {
+  MAIN
+  SECONDARY
+  STANDARD
+}
+
+enum ScheduleStatus {
+  PENDING
+  IN_REVIEW
+  COMPLETED
+  SKIPPED
+  EXPIRED
+}
+
+// ==========================================
+// 1. IDENTITY & USERS
+// ==========================================
+
+model User {
+  userId    Int       @id @default(autoincrement()) @map("user_id")
+  account   String    @db.VarChar(255)
+  role      Role      @default(PATIENT)
+  password  String    @db.VarChar(255)
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  patients   Patient[]
+  therapists Therapist[]
+
+  @@map("Users")
+}
+
+model Patient {
+  patientId             Int      @id @default(autoincrement()) @map("patient_id")
+  userId                Int      @map("user_id")
+  patientFirstName      String   @map("patient_first_name") @db.VarChar(255)
+  patientLastName       String   @map("patient_last_name") @db.VarChar(255)
+  gender                Gender // <-- Updated to Enum
+  dateOfBirth           DateTime @map("date_of_birth") @db.Date
+  occupation            String   @db.VarChar(255)
+  province              String   @db.VarChar(255)
+  postcode              String?   @db.VarChar(5)
+  familyStatus          String?  @db.VarChar(255)
+  note                  String?  @db.Text
+  caregiverFirstName    String   @map("caregiver_first_name") @db.VarChar(255)
+  caregiverLastName     String   @map("caregiver_last_name") @db.VarChar(255)
+  caregiverRelationship String   @map("caregiver_relationship") @db.VarChar(255)
+  caregiverTelephone    String?  @db.VarChar(15)
+  householdMembersCount Int      @db.Integer @default(0)
+  childrenCount         Int      @db.Integer @default(0)
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+
+  user User @relation(fields: [userId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+
+  sessionResults     SessionResult[]
+  assessmentResults  AssessmentResult[]
+  trainingPlans      TrainingPlan[]
+  dailyPlanSchedules DailyPlanSchedule[]
+  progressTrackings  ProgressTracking[]
+
+  @@map("Patients")
+}
+
+model Therapist {
+  therapistId Int      @id @default(autoincrement()) @map("therapist_id")
+  userId      Int      @map("user_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("Therapists")
+}
+
+// ==========================================
+// 2. CONTENT LIBRARY
+// ==========================================
+
+model Category {
+  categoryId   Int    @id @default(autoincrement()) @map("category_id")
+  categoryName String @map("category_name") @db.VarChar(255)
+
+  trainingSets             TrainingSet[]
+  assessmentCategoryResults AssessmentCategoryResult[]
+  trainingPlans             TrainingPlan[]
+  progressCategories        ProgressCategory[]
+
+  @@map("Categories")
+}
+
+model DifficultyLevel {
+  difficultyId    Int    @id @default(autoincrement()) @map("difficulty_id")
+  difficultyLevel Int    @map("difficulty_level") @db.SmallInt
+  difficultyName  String @map("difficulty_name") @db.VarChar(255)
+
+  trainingSets             TrainingSet[]
+  assessmentCategoryResults AssessmentCategoryResult[]
+  trainingPlans             TrainingPlan[]
+  questions                 Question[] // <-- NEW: Reverse relation
+
+  @@map("Difficulty_Levels")
+}
+
+model TrainingSet {
+  setId                Int       @id @default(autoincrement()) @map("set_id")
+  categoryId           Int       @map("category_id")
+  difficultyId         Int       @map("difficulty_id")
+  title                String    @db.VarChar(255)
+  isStandardAssessment Boolean   @default(false) @map("is_standard_assessment")
+  deletedAt            DateTime? @map("deleted_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  category        Category        @relation(fields: [categoryId], references: [categoryId], onDelete: NoAction, onUpdate: NoAction)
+  difficultyLevel DifficultyLevel @relation(fields: [difficultyId], references: [difficultyId], onDelete: NoAction, onUpdate: NoAction)
+
+  sessionCategoryResults SessionCategoryResult[]
+  setQuestions           TrainingSetQuestion[]
+  assessmentResults      AssessmentResult[]
+
+  @@map("Training_Sets")
+}
+
+model TrainingSetQuestion {
+  setId      Int @map("set_id")
+  questionId Int @map("question_id")
+  orderIndex Int @map("order_index") // Order is now specific to the Set-Question combo
+
+  trainingSet TrainingSet @relation(fields: [setId], references: [setId], onDelete: Cascade)
+  question    Question    @relation(fields: [questionId], references: [questionId], onDelete: Cascade)
+
+  @@id([setId, questionId])
+  @@map("Training_Set_Questions")
+}
+
+model Question {
+  questionId   Int          @id @default(autoincrement()) @map("question_id")
+  questionType QuestionType 
+  difficultyId Int?         @map("difficulty_id") // <-- NEW: Nullable foreign key
+  deletedAt    DateTime?    @map("deleted_at")
+
+  // NEW: Relation field mapping to DifficultyLevel
+  difficultyLevel DifficultyLevel? @relation(fields: [difficultyId], references: [difficultyId], onDelete: NoAction, onUpdate: NoAction)
+
+  trainingSets TrainingSetQuestion[]
+
+  namingQuestions             NamingQuestion[]
+  comprehensionImageQuestions ComprehensionImageQuestion[]
+  ComprehensionQuestion       ComprehensionQuestion[]
+  repetitionQuestions         RepetitionQuestion[]
+  spontaneousQuestions        SpontaneousQuestion[]
+  sessionItemResults          SessionItemResult[]
+  assessmentItemResults       AssessmentItemResult[]
+  
+  @@map("Questions")
+}
+
+model NamingQuestion {
+  namingQuestionId      Int    @id @default(autoincrement()) @map("naming_question_id")
+  questionId            Int    @map("question_id")
+  correctAnswer         String @map("correct_answer") @db.VarChar(255)
+  correctAnswerVoiceUrl String @map("correct_answer_voice_url") @db.VarChar(255)
+  imageUrl              String @map("image_url") @db.VarChar(255)
+  hint1Text             String @map("hint_1_text") @db.VarChar(255)
+  hint1VoiceUrl         String @map("hint_1_voice_url") @db.VarChar(255)
+  hint2Text             String @map("hint_2_text") @db.VarChar(255)
+  hint2VoiceUrl         String @map("hint_2_voice_url") @db.VarChar(255)
+
+  question Question @relation(fields: [questionId], references: [questionId])
+
+  @@map("Naming_Questions")
+}
+
+model ComprehensionImageQuestion {
+  comprehensionImageQuestionId Int    @id @default(autoincrement()) @map("comprehension_image_question_id")
+  questionId                   Int    @map("question_id")
+  questionText                 String @map("question_text") @db.VarChar(255)
+  questionVoiceUrl             String @map("question_voice_url") @db.VarChar(255)
+  correctImageUrl              String @map("correct_image_url") @db.VarChar(255)
+  wrongImageUrl1               String @map("wrong_image_url_1") @db.VarChar(255)
+  wrongImageUrl2               String @map("wrong_image_url_2") @db.VarChar(255)
+
+  question Question @relation(fields: [questionId], references: [questionId])
+
+  @@map("Comprehension_Image_Questions")
+}
+
+model ComprehensionQuestion {
+  comprehensionQuestionId Int      @id @default(autoincrement()) @map("comprehension_question_id")
+  questionId              Int      @map("question_id")
+  customCondition         String?  @map("custom_condition") @db.VarChar(255)
+  correctAnswer           Boolean? @map("correct_answer") @db.Boolean
+  questionText            String   @map("question_text") @db.VarChar(255)
+  questionVoiceUrl        String   @map("question_voice_url") @db.VarChar(255)
+
+  question Question @relation(fields: [questionId], references: [questionId])
+
+  @@map("comprehension_question_id")
+}
+
+model RepetitionQuestion {
+  repetitionQuestionId Int    @id @default(autoincrement()) @map("repetition_question_id")
+  questionId           Int    @map("question_id")
+  text                 String @db.VarChar(255)
+  textVoiceUrl         String @map("text_voice_url") @db.VarChar(255)
+
+  question Question @relation(fields: [questionId], references: [questionId])
+
+  @@map("Repetition_Questions")
+}
+
+model SpontaneousQuestion {
+  spontaneousQuestionId Int     @id @default(autoincrement()) @map("spontaneous_question_id")
+  questionId            Int     @map("question_id")
+  customCondition       String? @map("custom_condition") @db.VarChar(255)
+  correctAnswer         String? @map("correct_answer") @db.VarChar(255)
+  correctAnswerVoiceUrl String? @map("correct_answer_voice_url") @db.VarChar(255)
+  questionText          String  @map("question_text") @db.VarChar(255)
+  questionVoiceUrl      String  @map("question_voice_url") @db.VarChar(255)
+
+  question Question @relation(fields: [questionId], references: [questionId])
+
+  @@map("Spontaneous_Questions")
+}
+
+// ==========================================
+// 3. TRAINING SESSIONS
+// ==========================================
+
+model SessionResult {
+  sessionId Int @id @default(autoincrement()) @map("session_id")
+  patientId Int @map("patient_id")
+
+  patient Patient @relation(fields: [patientId], references: [patientId])
+
+  // Changed to 1:1 relation
+  sessionCategoryResult SessionCategoryResult? 
+  dailyPlanSchedules    DailyPlanSchedule[]
+
+  @@map("Session_Results")
+}
+
+model SessionCategoryResult {
+  sessionCategoryId   Int       @id @default(autoincrement()) @map("session_category_id")
+  sessionId           Int       @unique @map("session_id") // <-- Added @unique to enforce 1:1
+  setId               Int       @map("set_id")
+  totalScore          Decimal   @map("total_score") @db.Decimal(5, 2)
+  averageResponseTime Decimal   @map("average_response_time") @db.Decimal(5, 2)
+  averageHintUsed     Decimal   @map("average_hint_used") @db.Decimal(5, 2)
+  startedAt           DateTime  @default(now()) @map("started_at")
+  endedAt             DateTime? @map("ended_at")
+
+  sessionResult SessionResult @relation(fields: [sessionId], references: [sessionId])
+  trainingSet   TrainingSet   @relation(fields: [setId], references: [setId])
+
+  sessionItemResults SessionItemResult[]
+
+  @@map("Session_Category_Results")
+}
+
+model SessionItemResult {
+  sessionItemId     Int      @id @default(autoincrement()) @map("session_item_id")
+  sessionCategoryId Int      @map("session_category_id")
+  questionId        Int      @map("question_id")
+  asrText           String?  @map("asr_text") @db.Text
+  hintsUsed         Int?     @map("hints_used") @db.SmallInt
+  score             Decimal  @db.Decimal(3, 2)
+  responseTime      Decimal  @map("response_time") @db.Decimal(5, 2)
+  correctness       Decimal? @db.Decimal(6, 3)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Date
+  answerImageUrl    String?  @map("answer_image_url") @db.VarChar(255)
+  answerBoolean     Boolean? @map("answer_boolean")
+  audioFileName     String? @map("audio_file_name")
+  sttModel          String? @map("sst_model")
+
+  sessionCategoryResult SessionCategoryResult @relation(fields: [sessionCategoryId], references: [sessionCategoryId], onDelete: NoAction, onUpdate: NoAction)
+  question              Question              @relation(fields: [questionId], references: [questionId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("Session_Item_Results")
+}
+
+// ==========================================
+// 4. STANDARD ASSESSMENT
+// ==========================================
+
+model AssessmentResult {
+  assessmentResultId Int       @id @default(autoincrement()) @map("assessment_result_id")
+  patientId          Int       @map("patient_id")
+  setId              Int       @default(2) @map("set_id") 
+  startedAt          DateTime  @default(now()) @map("started_at")
+  endedAt            DateTime? @map("ended_at")
+
+  patient      Patient     @relation(fields: [patientId], references: [patientId])
+  trainingSet  TrainingSet @relation(fields: [setId], references: [setId], onDelete: NoAction, onUpdate: NoAction) // <-- NEW: Relation definition
+
+  assessmentItemResults     AssessmentItemResult[]
+  assessmentCategoryResults AssessmentCategoryResult[]
+
+  @@map("Assessment_Result")
+}
+
+model AssessmentItemResult {
+  assessmentItemResultId Int       @id @default(autoincrement()) @map("assessment_item_result_id")
+  assessmentResultId     Int       @map("assessment_result_id")
+  questionId             Int       @map("question_id")
+  asrText                String?   @map("asr_text") @db.Text
+  correctness            Decimal?  @db.Decimal(6, 3)
+  responseTime           Decimal?  @map("response_time") @db.Decimal(5, 2)
+  answerImageUrl         String?   @map("answer_image_url") @db.VarChar(255)
+  answerBoolean          Boolean?  @map("answer_boolean")
+  isCorrect              Boolean   @map("is_correct")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  audioFileName          String?   @map("audio_file_name")
+  sttModel               String?   @map("sst_model")
+
+
+  assessmentResult AssessmentResult @relation(fields: [assessmentResultId], references: [assessmentResultId], onDelete: NoAction, onUpdate: NoAction)
+  question         Question         @relation(fields: [questionId], references: [questionId], onDelete: NoAction, onUpdate: NoAction)
+
+  assessmentCategoryResults AssessmentCategoryResult[] 
+
+  @@map("Assessment_Item_Results")
+}
+model AssessmentCategoryResult {
+  assessmentCategoryResultId Int       @id @default(autoincrement()) @map("assessment_category_result_id")
+  assessmentResultId         Int       @map("assessment_result_id")
+  categoryId                 Int       @map("category_id")
+  assessmentItemResultId     Int?      @map("assessment_item_result_id") // <-- NEW: Foreign Key (Optional for existing data)
+  totalScore                 Decimal   @map("total_score") @db.Decimal(5, 2)
+  maxScore                   Decimal   @map("max_score") @db.Decimal(5, 2)
+  recommendedDifficultyId    Int?      @map("recommended_difficulty_id")
+  createdAt                  DateTime  @default(now()) @map("created_at")
+
+  assessmentResult      AssessmentResult      @relation(fields: [assessmentResultId], references: [assessmentResultId], onDelete: NoAction, onUpdate: NoAction)
+  category              Category              @relation(fields: [categoryId], references: [categoryId], onDelete: NoAction, onUpdate: NoAction)
+  recommendedDifficulty DifficultyLevel?      @relation(fields: [recommendedDifficultyId], references: [difficultyId], onDelete: NoAction, onUpdate: NoAction)
+  
+  // <-- NEW: Relation link back to AssessmentItemResult
+  assessmentItemResult  AssessmentItemResult? @relation(fields: [assessmentItemResultId], references: [assessmentItemResultId], onDelete: NoAction, onUpdate: NoAction) 
+
+  @@map("Assessment_Category_Results")
+}
+// ==========================================
+// 5. PLANNING & SCHEDULING
+// ==========================================
+
+model TrainingPlan {
+  trainingPlanId Int      @id @default(autoincrement()) @map("training_plan_id")
+  patientId      Int      @map("patient_id")
+  categoryId     Int      @map("category_id")
+  difficultyId   Int      @map("difficulty_id")
+  planRole       PlanRole // <-- Updated to Enum
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  patient         Patient         @relation(fields: [patientId], references: [patientId], onDelete: NoAction, onUpdate: NoAction)
+  category        Category        @relation(fields: [categoryId], references: [categoryId], onDelete: NoAction, onUpdate: NoAction)
+  difficultyLevel DifficultyLevel @relation(fields: [difficultyId], references: [difficultyId], onDelete: NoAction, onUpdate: NoAction)
+
+  dailyPlanSchedules DailyPlanSchedule[]
+
+  @@map("Training_Plans")
+}
+
+model DailyPlanSchedule {
+  dailyPlanScheduleId Int            @id @default(autoincrement()) @map("daily_plan_schedule_id")
+  trainingPlanId      Int            @map("training_plan_id")
+  patientId           Int            @map("patient_id")
+  scheduledDate       DateTime       @map("scheduled_date") @db.Date
+  status              ScheduleStatus @default(PENDING) // <-- Updated to Enum
+  sessionId           Int?           @map("session_id")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  trainingPlan  TrainingPlan   @relation(fields: [trainingPlanId], references: [trainingPlanId], onDelete: NoAction, onUpdate: NoAction)
+  patient       Patient        @relation(fields: [patientId], references: [patientId], onDelete: NoAction, onUpdate: NoAction)
+  sessionResult SessionResult? @relation(fields: [sessionId], references: [sessionId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([patientId, scheduledDate, trainingPlanId])
+  @@map("Daily_Plan_Schedule")
+}
+
+// ==========================================
+// 6. PROGRESS TRACKING
+// ==========================================
+
+model ProgressTracking {
+  progressTrackingId Int      @id @default(autoincrement()) @map("progress_tracking_id")
+  patientId          Int      @map("patient_id")
+  lastUpdate         DateTime @map("last_update") @db.Timestamp()
+
+  patient            Patient            @relation(fields: [patientId], references: [patientId])
+  progressCategories ProgressCategory[]
+
+  @@map("Progress_Tracking")
+}
+
+model ProgressCategory {
+  progressTrackingId    Int    @map("progress_tracking_id")
+  categoryId            Int    @map("category_id")
+  averageScorePercentage Float? @map("average_score_percentage")
+  latestScorePercent    Float? @map("latest_score_percent")
+  averageHintUsed       Float? @map("average_hint_used")
+  averageResponseTime   Float? @map("average_response_time")
+  trend                 Float?
+
+  progressTracking ProgressTracking @relation(fields: [progressTrackingId], references: [progressTrackingId])
+  category         Category         @relation(fields: [categoryId], references: [categoryId])
+
+  @@id([progressTrackingId, categoryId])
+  @@map("Progress_Category")
+}

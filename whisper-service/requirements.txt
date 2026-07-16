@@ -1,0 +1,10 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+faster-whisper>=1.0.0
+torch>=2.1.0
+pydantic>=2.6
+pythainlp>=5.0.0
+rapidfuzz
+python-multipart
+
+--extra-index-url https://download.pytorch.org/whl/cu132

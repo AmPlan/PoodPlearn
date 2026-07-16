@@ -1,0 +1,7 @@
+.next/
+node_modules/
+generated/
+.env
+.venv/
+.vscode/
+__pycache__/
