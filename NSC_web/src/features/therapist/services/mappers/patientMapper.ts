@@ -32,6 +32,7 @@ export function calculateAge(dateOfBirth: string): number {
 
 export function mapApiPatientToSummary(record: ApiPatientRecord): TherapistPatientSummary {
   const lastSession = record.recentSessions ? record.recentSessions[0] : undefined;
+  console.log(record.recentSessions);
   return {
     id: String(record.patientId),
     code: record.user?.account ?? "",

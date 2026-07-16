@@ -1169,7 +1169,6 @@ useEffect(() => {
   /* ---- skip handler ---- */
 
   async function handleSkipQuestion() {
-    console.log(recordingState);
     if (!session || isSkipping || recordingState === "processing") {
       return;
     }
@@ -1255,9 +1254,10 @@ useEffect(() => {
       mediaRecorder.start();
       setRecordingState("recording");
       setHasMockRecording(false);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error accessing microphone:", error);
-      setErrorMessage("ไม่สามารถเข้าถึงไมโครโฟนได้ โปรดตรวจสอบการอนุญาตใช้งาน");
+      const message = error instanceof Error ? error.message : String(error);
+      setErrorMessage("ไม่สามารถเข้าถึงไมโครโฟนได้ โปรดตรวจสอบการอนุญาตใช้งาน" + (message ? `: ${message}` : ""));
     }
   }
 
@@ -1297,9 +1297,10 @@ useEffect(() => {
         setRecordingState("idle");
         goToNextQuestionOrResult();
       }, delay);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Upload error:", error);
-      setErrorMessage(error.message || "เกิดข้อผิดพลาดในการส่งคำตอบ โปรดลองอีกครั้ง");
+      const message = error instanceof Error ? error.message : String(error);
+      setErrorMessage(message || "เกิดข้อผิดพลาดในการส่งคำตอบ โปรดลองอีกครั้ง");
       setRecordingState("idle");
       setHasMockRecording(false);
     }

@@ -522,8 +522,6 @@ export async function getStandardAssessmentResult(): Promise<
       };
     }
 
-    console.log(successPayload?.data);
-
     const categoryResults = (successPayload?.data?.categoryResults ?? []) as Array<{
       categoryId?: number;
       totalScore?: number;

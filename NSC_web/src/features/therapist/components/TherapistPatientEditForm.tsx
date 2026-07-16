@@ -21,7 +21,6 @@ export default function TherapistPatientEditForm({
   const [loadedProfile, setLoadedProfile] = useState<PatientProfile | undefined>(
     initialProfile,
   );
-  console.log(loadedProfile);
   const [isLoadingProfile, setIsLoadingProfile] = useState(!initialProfile);
   const [loadError, setLoadError] = useState("");
 

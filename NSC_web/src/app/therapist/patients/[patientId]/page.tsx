@@ -16,8 +16,6 @@ export default async function TherapistPatientDetailPage({ params }: PageProps) 
     getPatientClinicalOverview(patientId),
   ]);
 
-  console.log(result)
-
   if (!result.success) {
     return <TherapistPatientDetailFallback patientId={patientId} />;
   }

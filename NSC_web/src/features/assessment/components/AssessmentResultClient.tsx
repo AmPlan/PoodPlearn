@@ -42,8 +42,6 @@ export function AssessmentResultClient() {
         return;
       }
 
-      console.log(serviceResult.data)
-
       setResult(serviceResult.data);
       setIsLoading(false);
     }

@@ -76,32 +76,37 @@ function canEditPatient(sessionPatientId: number | undefined, role: string, pati
 
 async function getPatientWithRecentSessions(patientId: number) {
   return prisma.patient.findFirst({
-    where: { patientId, user: { deletedAt: null } },
-    include: {
-      user: {
-        select: {
-          userId: true,
-          account: true,
-          role: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      },
-      sessionResults: {
-        where: {
-          sessionCategoryResult: {
-            endedAt: { not: null },
-          },
-        },
-        include: {
-          sessionCategoryResult: {
-            include: {
-              trainingSet: true,
-            },
-          },
-        },
-      },
-    },
+		where: { patientId, user: { deletedAt: null } },
+		include: {
+			user: {
+				select: {
+					userId: true,
+					account: true,
+					role: true,
+					createdAt: true,
+					updatedAt: true,
+				},
+			},
+			sessionResults: {
+				where: {
+					sessionCategoryResult: {
+						endedAt: { not: null },
+					},
+				},
+				orderBy: {
+					sessionCategoryResult: {
+						endedAt: "desc",
+					},
+				},
+				include: {
+					sessionCategoryResult: {
+						include: {
+							trainingSet: true,
+						},
+					},
+				},
+			},
+		},
   });
 }
 export async function GET(_req: NextRequest, context: PatientRouteContext) {
