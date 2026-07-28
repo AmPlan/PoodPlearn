@@ -20,6 +20,7 @@
 		"vscode-ripgrep": "^1.13.2"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "2.5.4",
 		"@tailwindcss/postcss": "^4",
 		"@types/node": "^20",
 		"@types/pg": "^8.20.0",
