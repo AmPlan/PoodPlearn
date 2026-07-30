@@ -1,13 +1,11 @@
-import Link from "next/link";
-import { headers, cookies } from "next/headers"
 import { getTherapistDashboardData } from "@/features/therapist/services/therapistDashboardService";
+import { cookies } from "next/headers"
+import { getBaseUrl } from "@/lib/baseUrl";
 import TherapistPatientList from "@/features/therapist/components/TherapistPatientList";
+import Link from "next/link";
 
 export default async function TherapistPatientsPage() {
-  const h = await headers();
-  const host = h.get("host");
-  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
-  const origin = process.env.NEXT_PUBLIC_APP_URL ?? `${protocol}://${host}`;
+  const origin = getBaseUrl();
   const cookieHeader = (await cookies()).toString();
   
   const result = await getTherapistDashboardData(undefined, { origin, cookieHeader });

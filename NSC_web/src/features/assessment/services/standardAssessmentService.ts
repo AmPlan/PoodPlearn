@@ -1,4 +1,5 @@
 import { getAuthSession } from "@/features/auth/services/authSession";
+import { getBaseUrl } from "@/lib/baseUrl";
 import type {
   AssessmentAnswer,
   AssessmentHint,
@@ -101,14 +102,6 @@ function clearAssessmentSession() {
   currentAssessmentId = null;
   currentAssessmentSetId = null;
   currentAssessmentQuestionCount = 0;
-}
-
-function getBaseUrl() {
-  if (typeof window !== "undefined") {
-    return window.location.origin;
-  }
-
-  return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 }
 
 async function ensureAssessmentStarted(): Promise<{ assessmentId: number; setId: number | null }> {
