@@ -11,3 +11,5 @@ whisper-service/pathumma-whisper-ct2/preprocessor_config.json
 whisper-service/pathumma-whisper-ct2/tokenizer_config.json
 whisper-service/pathumma-whisper-ct2/tokenizer.json
 whisper-service/pathumma-whisper-ct2/vocabulary.json
+.vercel
+.env*

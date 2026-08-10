@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { AUTH_COOKIE_NAME, verifySession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getBaseUrl } from '@/lib/baseUrl';
 
 async function checkHasFinishedAssessment(baseUrl: string, patientId: number) {
   const response = await fetch(`${baseUrl}/api/v1/assessments/has-finished?patientId=${patientId}`, {
@@ -58,9 +59,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Patient not found.' }, { status: 404 });
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
-
-    const hasFinishedAssessment = await checkHasFinishedAssessment(baseUrl, patient.patientId);    
+    const hasFinishedAssessment = await checkHasFinishedAssessment(getBaseUrl(), patient.patientId);    
 
     return NextResponse.json(
       {

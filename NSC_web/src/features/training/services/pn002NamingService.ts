@@ -1,3 +1,4 @@
+import { getBaseUrl } from "@/lib/baseUrl";
 import type {
   NamingCategory,
   NamingQuestion,
@@ -121,13 +122,6 @@ function createFailure<T>(errorMessage: string): TrainingServiceResult<T> {
   return { success: false, errorMessage };
 }
 
-function getBaseUrl() {
-  if (typeof window !== "undefined") {
-    return window.location.origin;
-  }
-
-  return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-}
 
 function toNamingSet(payload: TrainingSetApiResponse): NamingSet {
   const questions = (payload.setQuestions ?? []).map((item, index) => {

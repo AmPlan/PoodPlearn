@@ -1,3 +1,4 @@
+import { getBaseUrl } from "@/lib/baseUrl";
 import type { TherapistServiceResult } from "../../types/therapist.types";
 
 export type ServerContext = { origin: string; cookieHeader?: string };
@@ -14,12 +15,9 @@ async function resolveServerContext(
   }
 
   try {
-    const { cookies, headers } = await import("next/headers");
+    const { cookies } = await import("next/headers");
     const cookieStore = await cookies();
-    const requestHeaders = await headers();
-    const host = requestHeaders.get("host");
-    const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
-    const origin = process.env.NEXT_PUBLIC_APP_URL ?? `${protocol}://${host ?? "127.0.0.1:3000"}`;
+    const origin = getBaseUrl();
 
     return {
       origin,
@@ -47,7 +45,7 @@ export async function request<T>(
       resolvedContext?.origin ||
       (typeof window !== "undefined"
         ? window.location.origin
-        : process.env.NEXT_PUBLIC_APP_URL || "http://127.0.0.1:3000");
+        : getBaseUrl());
 
     const normalizedBasePath = basePath.startsWith("/") ? basePath : `/${basePath}`;
     const normalizedEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;

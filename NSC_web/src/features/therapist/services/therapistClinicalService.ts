@@ -4,6 +4,7 @@ import type {
   ProgressBySession,
   SessionResultItem,
 } from "../types/therapistClinical.types";
+import { getBaseUrl } from "@/lib/baseUrl";
 
 type SessionApiResult = {
   sessionId?: number;
@@ -22,13 +23,6 @@ type SessionApiResult = {
   } | null;
 };
 
-function getBaseUrl() {
-  if (typeof window !== "undefined") {
-    return window.location.origin;
-  }
-
-  return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-}
 
 function toNumber(value: number | string | null | undefined) {
   if (typeof value === "number") {
