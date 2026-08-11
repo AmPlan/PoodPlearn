@@ -112,7 +112,7 @@ export default function TrainingTodayPage() {
                 {plan.moduleName} หมวด{plan.categoryName}
               </h2>
               <p className="mt-5 text-xl font-medium leading-9 text-[#4E6D70]">
-                ระบบเลือกแบบฝึกให้จากผลการประเมินที่ผ่านมา
+                ระบบเลือกแบบฝึกให้จากผลการฝึกที่ผ่านมา
               </p>
             </div>
 
@@ -133,11 +133,6 @@ export default function TrainingTodayPage() {
               </div>
             </div>
           </div>
-
-          <div className="mt-10 text-lg leading-8 text-[#4E6D70]">
-            <p>แบบฝึกนี้ถูกจัดให้โดยอัตโนมัติตามผลการประเมิน PN001 / Standard Assessment ที่คุณเคยทำไว้</p>
-          </div>
-
           <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <button
               type="button"
@@ -147,9 +142,6 @@ export default function TrainingTodayPage() {
             >
               {isStarting ? "กำลังเริ่มแบบฝึก..." : "เริ่มแบบฝึก"}
             </button>
-            <p className="text-sm text-[#557276]">
-              ระบบเลือกแบบฝึกให้ตามผลการประเมินที่ผ่านมา
-            </p>
           </div>
         </article>
       </div>

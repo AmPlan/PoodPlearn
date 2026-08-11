@@ -1,19 +1,17 @@
-import type { PatientHomeResult } from "../types/patientHome.types";
+import type {
+	PatientHomeResult,
+	PatientHomeState
+} from "../types/patientHome.types";
 
 type PatientHomeApiResponse = {
-  patient: {
-    code: string | number;
-    name: string;
-  };
-  nextAction: {
-    type: string;
-    eyebrow: string;
-    title: string;
-    description: string;
-    progressPercent?: number;
-    buttonText: string;
-    targetPath: string;
-  };
+	patient: {
+		code: string | number;
+		name: string;
+	};
+	nextAction: {
+		type: PatientHomeState;
+		targetPath: string;
+	};
 };
 
 export async function getPatientHomeData(
@@ -54,15 +52,7 @@ export async function getPatientHomeData(
         name: payload.patient.name,
       },
       nextAction: {
-        type:
-          payload.nextAction.type === "has_daily_training_plan"
-            ? "has_daily_training_plan"
-            : "needs_standard_assessment",
-        eyebrow: payload.nextAction.eyebrow,
-        title: payload.nextAction.title,
-        description: payload.nextAction.description,
-        progressPercent: payload.nextAction.progressPercent,
-        buttonText: payload.nextAction.buttonText,
+        type: payload.nextAction.type,
         targetPath: payload.nextAction.targetPath,
       },
     },
