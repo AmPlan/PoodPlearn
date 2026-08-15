@@ -2,10 +2,10 @@ export type TodayTrainingPlan = {
   patientId: number;
   planId: string;
   sourceAssessmentId: string;
-  moduleId: "PN002";
-  moduleName: "Naming";
-  categoryId: "animals";
-  categoryName: "สัตว์";
+  moduleId: string;
+  moduleName: string;
+  categoryId: string;
+  categoryName: string;
   assignedSetId: string;
   totalQuestions: number;
   reason: string;

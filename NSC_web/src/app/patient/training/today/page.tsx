@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { getAuthSession } from "@/features/auth/services/authSession";
 import { getTodayTrainingPlan } from "@/features/training/services/trainingPlanService";
 import type { TodayTrainingPlan } from "@/features/training/types/trainingPlan.types";
@@ -69,14 +69,14 @@ export default function TrainingTodayPage() {
   if (errorMessage || !plan) {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-[#EFFBFD] p-8">
-        <div className="rounded-[32px] bg-white px-8 py-10 text-center shadow-[0_18px_45px_rgba(24,112,108,0.08)]">
+        <div className="rounded-4xl bg-white px-8 py-10 text-center shadow-[0_18px_45px_rgba(24,112,108,0.08)]">
           <p className="text-2xl font-bold text-[#B42318]">
             {errorMessage || "ไม่สามารถโหลดแบบฝึกวันนี้ได้"}
           </p>
           <button
             type="button"
             onClick={() => router.push("/patient/home")}
-            className="mt-8 inline-flex min-h-[56px] items-center justify-center rounded-full bg-[#1FA89C] px-7 py-4 text-lg font-semibold text-white shadow-[0_16px_34px_rgba(31,168,156,0.24)] hover:bg-[#178F84]"
+            className="mt-8 inline-flex min-h-14 items-center justify-center rounded-full bg-[#1FA89C] px-7 py-4 text-lg font-semibold text-white shadow-[0_16px_34px_rgba(31,168,156,0.24)] hover:bg-[#178F84]"
           >
             กลับไปหน้าหลัก
           </button>
@@ -87,7 +87,7 @@ export default function TrainingTodayPage() {
 
   return (
     <main className="min-h-dvh bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-5 py-6 text-[#123232] sm:px-8 sm:py-7">
-      <div className="mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-[1040px] flex-col">
+      <div className="mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-260 flex-col">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <p className="text-base font-semibold text-[#12847D]">แบบฝึกวันนี้</p>
@@ -98,7 +98,7 @@ export default function TrainingTodayPage() {
           <button
             type="button"
             onClick={() => router.push("/patient/home")}
-            className="inline-flex min-h-[56px] items-center justify-center rounded-full border border-[#C8E9EA] bg-white px-6 text-base font-semibold text-[#1A7F78] shadow-sm transition hover:bg-[#F5FEFF]"
+            className="inline-flex min-h-14 items-center justify-center rounded-full border border-[#C8E9EA] bg-white px-6 text-base font-semibold text-[#1A7F78] shadow-sm transition hover:bg-[#F5FEFF]"
           >
             ย้อนกลับ
           </button>
@@ -138,7 +138,7 @@ export default function TrainingTodayPage() {
               type="button"
               disabled={isStarting}
               onClick={handleStartTraining}
-              className="inline-flex min-h-[72px] w-full items-center justify-center rounded-[24px] bg-[#1FA89C] px-7 py-5 text-center text-2xl font-bold text-white shadow-[0_16px_34px_rgba(31,168,156,0.24)] transition hover:bg-[#178F84] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              className="inline-flex min-h-18 w-full items-center justify-center rounded-3xl bg-[#1FA89C] px-7 py-5 text-center text-2xl font-bold text-white shadow-[0_16px_34px_rgba(31,168,156,0.24)] transition hover:bg-[#178F84] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             >
               {isStarting ? "กำลังเริ่มแบบฝึก..." : "เริ่มแบบฝึก"}
             </button>

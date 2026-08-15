@@ -60,14 +60,27 @@ export async function regenerateReviewSchedule(
     ];
 
     for (const slot of slots) {
+      const trainingSet = await tx.trainingSet.findFirst({
+        where: {
+          categoryId: slot.category.categoryId,
+          difficultyId: recommendedDifficultyId,
+          deletedAt: null,
+        },
+        include: { category: true, difficultyLevel: true },
+        orderBy: { setId: 'asc' },
+      });
+
+      if (!trainingSet) {
+        throw new Error('Unable to find a training set for the selected category and difficulty.');
+      }
+
       const trainingPlan = await tx.trainingPlan.create({
         data: {
           patientId,
-          categoryId: slot.category.categoryId,
-          difficultyId: recommendedDifficultyId,
+          trainingSetId: trainingSet.setId,
           planRole: slot.planRole,
         },
-        include: { category: true, difficultyLevel: true },
+        include: { trainingSet: { include: { category: true, difficultyLevel: true } } },
       });
 
       const dailyPlanSchedule = await tx.dailyPlanSchedule.create({
@@ -82,7 +95,21 @@ export async function regenerateReviewSchedule(
       generatedSchedules.push({
         scheduledDate,
         planRole: slot.planRole,
-        trainingPlan,
+        trainingPlan: {
+          trainingPlanId: trainingPlan.trainingPlanId,
+          categoryId: trainingSet.categoryId,
+          difficultyId: trainingSet.difficultyId,
+          planRole: trainingPlan.planRole,
+          category: {
+            categoryId: trainingSet.category.categoryId,
+            categoryName: trainingSet.category.categoryName,
+          },
+          difficultyLevel: {
+            difficultyId: trainingSet.difficultyId,
+            difficultyLevel: trainingSet.difficultyLevel.difficultyLevel,
+            difficultyName: trainingSet.difficultyLevel.difficultyName,
+          },
+        },
         dailyPlanSchedule: {
           dailyPlanScheduleId: dailyPlanSchedule.dailyPlanScheduleId,
           status: dailyPlanSchedule.status,

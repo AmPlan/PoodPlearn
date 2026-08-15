@@ -56,6 +56,8 @@ export function PatientHomeClient() {
 
 			setHomeData(result.data);
 
+			console.log(result);
+
 			switch (result.data.nextAction.type) {
 				case "has_daily_training_plan":
 					setHomeAction({
@@ -112,10 +114,10 @@ export function PatientHomeClient() {
 
 	return (
 		<main className="min-h-dvh bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-5 py-6 text-[#123232] sm:px-8 sm:py-7">
-			<div className="mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-[1040px] flex-col sm:min-h-[calc(100dvh-3.5rem)]">
+			<div className="mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-260 flex-col sm:min-h-[calc(100dvh-3.5rem)]">
 				<header className="flex justify-start">
 					<button
-						className="min-h-[56px] rounded-full border border-[#C8E9EA] bg-white px-7 text-lg font-semibold text-[#1A7F78] outline-none transition hover:bg-[#F5FEFF] focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98]"
+						className="min-h-14 rounded-full border border-[#C8E9EA] bg-white px-7 text-lg font-semibold text-[#1A7F78] outline-none transition hover:bg-[#F5FEFF] focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98]"
 						type="button"
 						onClick={handleLogout}
 					>
@@ -129,13 +131,13 @@ export function PatientHomeClient() {
 							กำลังโหลดข้อมูล...
 						</p>
 					) : errorMessage || !homeData ? (
-						<div className="mx-auto w-full max-w-[920px] rounded-[28px] border border-[#F3D0D0] bg-white px-7 py-8 text-center shadow-[0_18px_45px_rgba(24,112,108,0.08)] sm:px-9">
+						<div className="mx-auto w-full max-w-230 rounded-[28px] border border-[#F3D0D0] bg-white px-7 py-8 text-center shadow-[0_18px_45px_rgba(24,112,108,0.08)] sm:px-9">
 							<p className="text-2xl font-bold text-[#B42318]">
 								{errorMessage || "ไม่พบข้อมูลผู้รับบริการ"}
 							</p>
 						</div>
 					) : (
-						<div className="mx-auto w-full max-w-[920px]">
+						<div className="mx-auto w-full max-w-230">
 							<p className="mb-8 text-center text-[2.2rem] font-bold leading-tight sm:text-[2.8rem]">
 								สวัสดีค่ะ คุณ{homeData.patient.name}
 							</p>
@@ -179,7 +181,7 @@ export function PatientHomeClient() {
 									</p>
 
 									{typeof homeAction.progressPercent === "number" ? (
-										<div className="mt-6" aria-label="ความคืบหน้า">
+										<div className="mt-6">
 											<div className="mb-3 flex items-center justify-between text-lg font-bold text-[#4E6D70]">
 												<span>ความคืบหน้า</span>
 												<span>{homeAction.progressPercent}%</span>
@@ -206,7 +208,7 @@ export function PatientHomeClient() {
 										) : null}
 
 										<Link
-											className="flex min-h-[72px] w-full items-center justify-center rounded-[24px] bg-[#1FA89C] px-7 py-5 text-center text-2xl font-bold text-white shadow-[0_16px_34px_rgba(31,168,156,0.24)] outline-none transition duration-150 hover:bg-[#178F84] hover:shadow-[0_18px_38px_rgba(31,168,156,0.3)] focus:ring-4 focus:ring-[#1FA89C]/30 active:scale-[0.98] active:bg-[#13786F] sm:text-[1.65rem]"
+											className="flex min-h-18 w-full items-center justify-center rounded-3xl bg-[#1FA89C] px-7 py-5 text-center text-2xl font-bold text-white shadow-[0_16px_34px_rgba(31,168,156,0.24)] outline-none transition duration-150 hover:bg-[#178F84] hover:shadow-[0_18px_38px_rgba(31,168,156,0.3)] focus:ring-4 focus:ring-[#1FA89C]/30 active:scale-[0.98] active:bg-[#13786F] sm:text-[1.65rem]"
 											href={homeData.nextAction.targetPath}
 											onClick={handlePrimaryActionClick}
 											aria-disabled={isStartingAction}
