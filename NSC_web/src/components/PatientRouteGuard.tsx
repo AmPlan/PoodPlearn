@@ -11,8 +11,7 @@ export default function PatientRouteGuard() {
     const session = getAuthSession();
 
     if (session?.role === "patient") {
-      // Ensure patients are always redirected to the Today Training entry
-      router.replace("/patient/training/today");
+      router.replace("/patient/home");
     }
   }, [router]);
 

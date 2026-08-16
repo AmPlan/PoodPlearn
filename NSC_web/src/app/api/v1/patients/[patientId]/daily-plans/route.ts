@@ -3,6 +3,7 @@ import { authorizePatientAccess, parsePatientId } from '@/lib/daily-plan/api-aut
 import { startOfDay } from '@/lib/daily-plan/date-utils';
 import { buildEnrichedSchedule } from '@/lib/daily-plan/serialize';
 import { prisma } from '@/lib/prisma';
+import { title } from 'process';
 
 type DailyPlanContext = {
   params: { patientId: string } | Promise<{ patientId: string }>;
@@ -130,7 +131,15 @@ export async function POST(req: NextRequest, context: DailyPlanContext) {
         status: { in: ['PENDING', 'IN_REVIEW'] },
       },
       include: {
-        trainingPlan: true,
+        trainingPlan: {
+          include: {
+            trainingSet: {
+              select: {
+                title: true
+              }
+            }
+          }
+        }
       },
       orderBy: { trainingPlan: { planRole: 'asc' } },
     });
@@ -140,6 +149,7 @@ export async function POST(req: NextRequest, context: DailyPlanContext) {
         scheduledDate: schedule.scheduledDate,
         planRole: schedule.trainingPlan.planRole,
         trainingPlan: {
+          trainingPlanTitle: schedule.trainingPlan.trainingSet.title,
           trainingPlanId: schedule.trainingPlan.trainingPlanId,
           trainingSetId: schedule.trainingPlan.trainingSetId,
         },
@@ -162,7 +172,7 @@ export async function POST(req: NextRequest, context: DailyPlanContext) {
             existingSchedules: enriched,
           },
         },
-        { status: 409 }
+        { status: 201 }
       );
     }
 
@@ -194,7 +204,9 @@ export async function POST(req: NextRequest, context: DailyPlanContext) {
             planRole,
             trainingPlan: {
               trainingPlanId: trainingPlan.trainingPlanId,
-              trainingSet,
+              trainingPlanTitle: trainingSet.title,
+              trainingSetId: trainingPlan.trainingSetId,
+
             },
             dailyPlanSchedule: {
               dailyPlanScheduleId: dailyPlanSchedule.dailyPlanScheduleId,

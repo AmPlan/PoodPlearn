@@ -1,105 +1,101 @@
 import type {
-  TodayTrainingPlan,
-  TrainingPlanServiceResult,
+	TodayTrainingPlan,
+	TrainingPlanServiceResult,
 } from "../types/trainingPlan.types";
 
 const DAILY_PLAN_API_BASE = "/api/v1/patients";
 
 function createSuccess<T>(data: T): TrainingPlanServiceResult<T> {
-  return { success: true, data };
+	return { success: true, data };
 }
 
 function createFailure<T>(errorMessage: string): TrainingPlanServiceResult<T> {
-  return { success: false, errorMessage };
+	return { success: false, errorMessage };
 }
 
-type DailyPlanApiQuestion = {
-  questionId: number;
-  questionType: string;
-  difficultyId: number;
-  orderIndex: number;
-  setId: number;
-  setTitle: string;
-  detail: string;
-};
-
-type DailyPlanApiTrainingSet = {
-  setId: number;
-  title: string;
-  category: { categoryId: number; categoryName: string };
-  difficultyLevel: { difficultyId: number; difficultyLevel: number; difficultyName: string };
+type DailyPlanApiScheduleEntry = {
+	scheduledDate: string;
+	planRole: string;
+	trainingPlan: {
+		trainingPlanTitle: string;
+		trainingPlanId: number;
+		trainingSetId: number;
+	};
+	dailyPlanSchedule: {
+		dailyPlanScheduleId: number;
+		status: "PENDING" | "IN_REVIEW" | "COMPLETED" | "SKIPPED" | "EXPIRED";
+	};
 };
 
 type DailyPlanApiPayload = {
-  dailyPlanScheduleId: number;
-  status: string;
-  scheduledDate: string;
-  sessionId: number | null;
-  trainingPlan: {
-    trainingPlanId: number;
-    planRole: string;
-    trainingSet: DailyPlanApiTrainingSet;
-  };
-  sessionResult: unknown;
-  trainingSets: Array<{ setId: number; title: string }>;
-  questions: DailyPlanApiQuestion[];
+	category: {
+		categoryId: number;
+		categoryName: string;
+	};
+	difficultyId: number | null;
+	existingScheduleCount?: number;
+	generatedScheduleCount?: number;
+	existingSchedules?: DailyPlanApiScheduleEntry[];
+	generatedSchedules?: DailyPlanApiScheduleEntry[];
 };
 
 export async function getTodayTrainingPlan(
-  patientId: number,
-): Promise<TrainingPlanServiceResult<TodayTrainingPlan>> {
-  if (!patientId) {
-    return createFailure("ไม่พบข้อมูลผู้ป่วย");
-  }
+	patientId: number,
+): Promise<TrainingPlanServiceResult<TodayTrainingPlan[]>> {
+	if (!patientId) {
+		return createFailure("ไม่พบข้อมูลผู้ป่วย");
+	}
 
-  const date = new Date().toISOString().slice(0, 10);
-  const url = `${DAILY_PLAN_API_BASE}/${patientId}/daily-plans?date=${date}`;
+	const date = new Date().toISOString().slice(0, 10);
+	const url = `${DAILY_PLAN_API_BASE}/${patientId}/daily-plans?date=${date}`;
 
-  try {
-    const response = await fetch(url, {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-					},
-					cache: "no-store",
-				});
+	try {
+		const response = await fetch(url, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			cache: "no-store",
+		});
 
-    if (!response.ok) {
-      const errorBody = await response.json().catch(() => null);
-      const errorMessage =
-        errorBody?.error || "ไม่สามารถโหลดแบบฝึกวันนี้ได้";
-      return createFailure(errorMessage);
-    }
+		if (!response.ok) {
+			const errorBody = await response.json().catch(() => null);
+			const errorMessage = errorBody?.error || "ไม่สามารถโหลดแบบฝึกวันนี้ได้";
+			return createFailure(errorMessage);
+		}
 
-    const body = (await response.json()) as { data: DailyPlanApiPayload[] };
-    const plan = body.data[0];
+		const body = (await response.json()) as { data: DailyPlanApiPayload };
+		const payload = body.data;
 
-    if (!plan) {
-      return createFailure("ไม่พบแผนในวันนี้");
-    }
+		const planEntries = payload.existingSchedules ?? payload.generatedSchedules;
 
-    return createSuccess({
-      patientId,
-      planId: `daily-plan-${plan.dailyPlanScheduleId}`,
-      sourceAssessmentId: `training-plan-${plan.trainingPlan.trainingPlanId}`,
-      moduleId: "PN002",
-      moduleName: "Naming",
-      categoryId: plan.trainingPlan.trainingSet.category.categoryId.toString(),
-      categoryName: plan.trainingPlan.trainingSet.category.categoryName,
-      assignedSetId: plan.trainingPlan.trainingSet.setId.toString(),
-      totalQuestions: plan.questions.length,
-      reason: "ระบบเลือกแบบฝึกให้จากผลการฝึกที่ผ่านมา",
-      sessionId: plan.sessionId?.toString() ?? "",
-      status:
-        plan.status === "PENDING"
-          ? "ready"
-          : plan.status === "IN_REVIEW"
-          ? "in_progress"
-          : plan.status === "COMPLETED"
-          ? "completed"
-          : "ready",
-    });
-  } catch {
-    return createFailure("เกิดข้อผิดพลาดในการเชื่อมต่อไปยังระบบแบบฝึก");
-  }
+		console.log(planEntries);
+
+		if (!planEntries) {
+			return createFailure("ไม่พบแผนในวันนี้");
+		}
+
+		const trainingPlans: TodayTrainingPlan[] = [];
+
+		planEntries.forEach((planEntry) => {
+			const schedule = planEntry.dailyPlanSchedule;
+			const title = planEntry.trainingPlan.trainingPlanTitle;
+			const category = payload.category.categoryName;
+			const displayCategoryName = category.toLowerCase().includes("naming")
+				? "ฝึกเรียกชื่อภาพ"
+				: category;
+
+			trainingPlans.push({
+				moduleName: title,
+				categoryId: payload.category.categoryId.toString(),
+				categoryName: displayCategoryName,
+				assignedSetId: planEntry.trainingPlan.trainingSetId.toString(),
+				status: schedule.status,
+			});
+		});
+
+		return createSuccess(trainingPlans);
+	} catch {
+		return createFailure("เกิดข้อผิดพลาดในการเชื่อมต่อไปยังระบบแบบฝึก");
+	}
 }

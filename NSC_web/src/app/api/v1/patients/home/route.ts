@@ -18,6 +18,8 @@ async function checkHasFinishedTodayPlan(patientId: number) {
 		},
 	});
 
+	
+
 	const endedAt = lastSession?.sessionCategoryResult?.endedAt;
 	if (!endedAt) {
 		return false;

@@ -8,8 +8,107 @@ import {
 	clearAuthSession,
 	getAuthSession,
 } from "@/features/auth/services/authSession";
+import { getTodayTrainingPlan } from "@/features/training/services/trainingPlanService";
 import { getPatientHomeData } from "../services/patientHomeService";
 import type { PatientHomeData } from "../types/patientHome.types";
+import { createNamingSession } from "@/features/training/services/pn002NamingService";
+
+type WeekStreakDay = {
+	label: string;
+	score: number | null;
+	isToday?: boolean;
+};
+
+const THAI_WEEKDAY_LABELS = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
+
+const mockScoresEndingToday: Array<number | null> = [
+	80,
+	95,
+	60,
+	65,
+	72,
+	88,
+	null,
+];
+
+
+
+function buildLastSevenDays(scores: Array<number | null>): WeekStreakDay[] {
+	const today = new Date();
+
+	return scores.map((score, index) => {
+		const offsetFromToday = scores.length - 1 - index;
+		const date = new Date(today);
+		date.setDate(today.getDate() - offsetFromToday);
+
+		return {
+			label: THAI_WEEKDAY_LABELS[date.getDay()],
+			score,
+			isToday: offsetFromToday === 0,
+		};
+	});
+}
+
+const mockWeekStreak: WeekStreakDay[] = buildLastSevenDays(
+	mockScoresEndingToday,
+);
+
+function WeekStreak({ days }: { days: WeekStreakDay[] }) {
+	return (
+		<div
+			className="flex items-center justify-between gap-1.5 rounded-3xl bg-[#F3FBFB] px-4 py-4"
+			role="list"
+			aria-label="การฝึก 7 วันล่าสุด"
+		>
+			{days.map((day, index) => (
+				<div
+					key={`${day.label}-${index}`}
+					className="flex flex-col items-center gap-2.5"
+					role="listitem"
+				>
+					<span
+						className={
+							"text-sm font-bold sm:text-base " +
+							(day.isToday ? "text-[#178F84]" : "text-[#7A9A9C]")
+						}
+					>
+						{day.label}
+					</span>
+					<span
+						className={
+							"flex h-12 w-12 items-center justify-center rounded-full text-base font-bold sm:h-14 sm:w-14 sm:text-lg " +
+							(day.score !== null
+								? "bg-[#18867d] text-white"
+								: day.isToday
+									? "border-2 border-dashed border-[#1FA89C] text-[#1FA89C]"
+									: "border border-[#D7ECED] bg-white text-[#B9CFD0]")
+						}
+					>
+						{day.score !== null ? (
+							<svg
+								aria-hidden="true"
+								className="h-6 w-6 sm:h-7 sm:w-7"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth={3}
+								viewBox="0 0 24 24"
+							>
+								<path
+									d="M5 13l4 4L19 7"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								/>
+							</svg>
+						) : (
+							"–"
+						)}
+					</span>
+				</div>
+			))}
+		</div>
+	);
+}
+
 
 export function PatientHomeClient() {
 	const router = useRouter();
@@ -26,10 +125,7 @@ export function PatientHomeClient() {
 	const [isFinished, setIsFinished] = useState(false);
 	const [showStartToast, setShowStartToast] = useState(false);
 	const [isStartingAction, setIsStartingAction] = useState(false);
-
-	useEffect(() => {
-		setHomeData;
-	});
+	const [assignedSetId, setAssignedSetId] = useState("");
 
 	useEffect(() => {
 		let isActive = true;
@@ -54,20 +150,38 @@ export function PatientHomeClient() {
 				return;
 			}
 
+			const patientId = session.user.patientId;
 			setHomeData(result.data);
 
-			console.log(result);
-
 			switch (result.data.nextAction.type) {
-				case "has_daily_training_plan":
+				case "has_daily_training_plan": {
+					const todayPlanResult = await getTodayTrainingPlan(Number(patientId));
+					const todayPlanData = todayPlanResult.data;
+					
+					const planList: string[] = [];
+
+					if (todayPlanData) {
+						for (let i: number = 0; i < todayPlanResult.data?.length; i++) {
+							const planEntry = todayPlanData[i];
+							planList.push((i+1) + ". " + planEntry.moduleName)
+							
+							if (planEntry.status === "PENDING" && assignedSetId === "") {
+								setAssignedSetId(planEntry.assignedSetId);
+							}
+						}
+					}
+
+					const descriptionText = todayPlanResult.success ? planList.join("\n") : "Error";
+
 					setHomeAction({
-						eyebrow: "แผนการฝึกวันนี้",
+						eyebrow: "แผนการฝึก",
 						title: "เป้าหมายวันนี้",
-						description: "1. ฝึกเรียกชื่อภาพ",
+						description: descriptionText,
 						progressPercent: 0,
 						buttonText: "เริ่มฝึกวันนี้",
 					});
 					break;
+				}
 				case "needs_standard_assessment":
 					setHomeAction({
 						eyebrow: "แบบทดสอบก่อนใช้งาน",
@@ -90,17 +204,50 @@ export function PatientHomeClient() {
 		return () => {
 			isActive = false;
 		};
-	}, [router]);
+	}, [assignedSetId, router]);
 
 	function handleLogout() {
 		clearAuthSession();
 		router.push("/");
 	}
 
-	function handlePrimaryActionClick(event: MouseEvent<HTMLAnchorElement>) {
+	async function handlePrimaryActionClick(event: MouseEvent<HTMLAnchorElement>) {
 		event.preventDefault();
 
 		if (!homeData || isStartingAction) {
+			return;
+		}
+
+		const authSession = getAuthSession();
+		if (!authSession || authSession.role !== "patient") {
+			setErrorMessage("Session not found!");
+			setIsLoading(false);
+			return;
+		}
+
+		const patientId = Number(authSession.user.patientId);
+		if (!Number.isInteger(patientId) || patientId <= 0) {
+			setErrorMessage("ไม่พบข้อมูลผู้รับบริการ");
+			setIsLoading(false);
+			return;
+		}
+
+		if (assignedSetId) {
+			setShowStartToast(true);
+			setIsStartingAction(true);
+			setIsLoading(true);
+
+			const sessionResult = await createNamingSession(assignedSetId, patientId);
+
+			if (!sessionResult.success) {
+				setErrorMessage(sessionResult.errorMessage);
+				setIsStartingAction(false);
+				setIsLoading(false);
+				return;
+			}
+
+			const sessionId = sessionResult.data.sessionId;
+			router.push(`/patient/training/naming/session/${sessionId}`);
 			return;
 		}
 
@@ -115,7 +262,8 @@ export function PatientHomeClient() {
 	return (
 		<main className="min-h-dvh bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-5 py-6 text-[#123232] sm:px-8 sm:py-7">
 			<div className="mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-260 flex-col sm:min-h-[calc(100dvh-3.5rem)]">
-				<header className="flex justify-start">
+				{/* UX Fix: Moved the logout button to the top right to match standard mental models */}
+				<header className="flex justify-end">
 					<button
 						className="min-h-14 rounded-full border border-[#C8E9EA] bg-white px-7 text-lg font-semibold text-[#1A7F78] outline-none transition hover:bg-[#F5FEFF] focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98]"
 						type="button"
@@ -125,25 +273,32 @@ export function PatientHomeClient() {
 					</button>
 				</header>
 
-				<section className="flex flex-1 items-center justify-center py-6 sm:py-7">
+				<section className="flex flex-1 items-center justify-center">
 					{isLoading ? (
 						<p className="text-center text-2xl font-bold text-[#45686A] sm:text-3xl">
 							กำลังโหลดข้อมูล...
 						</p>
 					) : errorMessage || !homeData ? (
 						<div className="mx-auto w-full max-w-230 rounded-[28px] border border-[#F3D0D0] bg-white px-7 py-8 text-center shadow-[0_18px_45px_rgba(24,112,108,0.08)] sm:px-9">
-							<p className="text-2xl font-bold text-[#B42318]">
+							<p className="text-2xl font-bold text-[#B42318] sm:text-3xl">
 								{errorMessage || "ไม่พบข้อมูลผู้รับบริการ"}
 							</p>
 						</div>
 					) : (
 						<div className="mx-auto w-full max-w-230">
-							<p className="mb-8 text-center text-[2.2rem] font-bold leading-tight sm:text-[2.8rem]">
+							<h1 className="mb-8 text-center text-3xl font-bold leading-tight sm:text-4xl text-[#123232]">
 								สวัสดีค่ะ คุณ{homeData.patient.name}
-							</p>
+							</h1>
 
 							{isFinished ? (
 								<article className="rounded-[34px] border border-[#C8E9EA] bg-white px-7 py-10 text-center shadow-[0_22px_55px_rgba(24,112,108,0.1)] sm:px-10 sm:py-12">
+									<div className="mb-10 border-b border-[#E3F3F4] pb-8">
+										<p className="mb-4 text-lg font-bold sm:text-3xl">
+											การฝึกต่อเนื่อง 7 วันล่าสุด
+										</p>
+										<WeekStreak days={mockWeekStreak} />
+									</div>
+
 									<div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#DDF2F3] sm:h-24 sm:w-24">
 										<svg
 											aria-hidden="true"
@@ -161,43 +316,29 @@ export function PatientHomeClient() {
 										</svg>
 									</div>
 
-									<h1 className="mt-6 text-[2.2rem] font-bold leading-tight sm:text-[2.65rem]">
+									<h2 className="mt-6 text-3xl font-bold leading-tight text-[#1A7F78] sm:text-4xl">
 										ท่านฝึกครบตามแผนวันนี้แล้ว
-									</h1>
-									<p className="mt-5 text-xl font-medium whitespace-pre leading-9 text-[#4E6D70] sm:text-2xl sm:leading-10">
+									</h2>
+									<p className="mt-4 text-xl font-medium leading-relaxed text-[#4E6D70] sm:text-2xl">
 										พบกันใหม่ในวันพรุ่งนี้นะคะ
 									</p>
 								</article>
 							) : (
-								<article className="rounded-[34px] border border-[#C8E9EA] bg-white px-7 py-8 shadow-[0_22px_55px_rgba(24,112,108,0.1)] sm:px-10 sm:py-10">
-									<p className="text-base font-bold text-[#1FA89C] sm:text-lg">
-										{homeAction.eyebrow}
-									</p>
-									<h1 className="mt-3 text-[2.2rem] font-bold leading-tight sm:text-[2.65rem]">
+								<article className="rounded-[34px] border border-[#C8E9EA] bg-white px-7 py-8 shadow-[0_22px_55px_rgba(24,112,108,0.1)] sm:px-10 sm:py-5">
+									{homeAction.eyebrow ? (
+										<p className="text-lg font-bold text-[#1FA89C] pb-3">
+											{homeAction.eyebrow}
+										</p>
+									) : null}
+
+									<h2 className="mt-2 text-3xl font-bold leading-tight">
 										{homeAction.title}
-									</h1>
-									<p className="mt-5 text-xl font-medium leading-9 text-[#4E6D70] sm:text-2xl sm:leading-10">
+									</h2>
+									<p className="mt-3 text-xl font-medium leading-relaxed pl-3 whitespace-pre-wrap">
 										{homeAction.description}
 									</p>
 
-									{typeof homeAction.progressPercent === "number" ? (
-										<div className="mt-6">
-											<div className="mb-3 flex items-center justify-between text-lg font-bold text-[#4E6D70]">
-												<span>ความคืบหน้า</span>
-												<span>{homeAction.progressPercent}%</span>
-											</div>
-											<div className="h-5 overflow-hidden rounded-full bg-[#DDF2F3]">
-												<div
-													className="h-full rounded-full bg-[#1FA89C]"
-													style={{
-														width: `${homeAction.progressPercent}%`,
-													}}
-												/>
-											</div>
-										</div>
-									) : null}
-
-									<div className="relative mt-8">
+									<div className="relative mt-10">
 										{showStartToast ? (
 											<p
 												className="pointer-events-none absolute -top-16 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#123232] px-6 py-3 text-lg font-semibold text-white shadow-[0_14px_30px_rgba(18,50,50,0.16)]"
@@ -208,13 +349,19 @@ export function PatientHomeClient() {
 										) : null}
 
 										<Link
-											className="flex min-h-18 w-full items-center justify-center rounded-3xl bg-[#1FA89C] px-7 py-5 text-center text-2xl font-bold text-white shadow-[0_16px_34px_rgba(31,168,156,0.24)] outline-none transition duration-150 hover:bg-[#178F84] hover:shadow-[0_18px_38px_rgba(31,168,156,0.3)] focus:ring-4 focus:ring-[#1FA89C]/30 active:scale-[0.98] active:bg-[#13786F] sm:text-[1.65rem]"
+											className="flex min-h-18 w-full items-center justify-center rounded-3xl bg-[#1FA89C] px-7 py-5 text-center text-xl font-bold text-white shadow-[0_16px_34px_rgba(31,168,156,0.24)] outline-none transition duration-150 hover:bg-[#178F84] hover:shadow-[0_18px_38px_rgba(31,168,156,0.3)] focus:ring-4 focus:ring-[#1FA89C]/30 active:scale-[0.98] active:bg-[#13786F] sm:text-2xl"
 											href={homeData.nextAction.targetPath}
 											onClick={handlePrimaryActionClick}
 											aria-disabled={isStartingAction}
 										>
 											{homeAction.buttonText}
 										</Link>
+									</div>
+									<div className="border-t border-[#E3F3F4] pt-4 mt-8">
+										<p className="mb-4 text-3xl font-bold">
+											การฝึกต่อเนื่อง 7 วันล่าสุด
+										</p>
+										<WeekStreak days={mockWeekStreak} />
 									</div>
 								</article>
 							)}

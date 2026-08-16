@@ -1,17 +1,16 @@
 "use client";
 
-import Link from "next/link";
+import { getAuthSession } from "@/features/auth/services/authSession";
 import { useEffect, useMemo, useRef, useState, type SVGProps } from "react";
 import { useRouter } from "next/navigation";
-import { TrainingImageFrame } from "./TrainingImageFrame";
+import Link from "next/link";
 import {
-  createMockNamingSession,
-  getMockNamingSessionById,
-  getMockNamingSessionSummary,
+  createNamingSession,
+  getNamingSessionById,
+  getNamingSessionSummary,
   getNamingSetById,
-  submitMockNamingAnswer,
+  submitNamingAnswer,
 } from "../services/pn002NamingService";
-import { getAuthSession } from "@/features/auth/services/authSession";
 import type {
   NamingHint,
   NamingQuestion,
@@ -19,6 +18,7 @@ import type {
   NamingSessionSummary,
   NamingSet,
 } from "../types/pn002Naming.types";
+import { TrainingImageFrame } from "./TrainingImageFrame";
 
 type RecordingState = "idle" | "recording" | "processing" | "recorded";
 type AnswerFeedbackState = "correct" | "wrong" | null;
@@ -140,13 +140,6 @@ function resolveAudioUrl(audioSrc?: string) {
 
 function isSupportedAudioSource(audioSrc: string) {
   return /\.(wav|mp3|m4a|ogg|aac|webm)(?:[?#].*)?$/i.test(audioSrc.trim());
-}
-
-function getMockAnswerForQuestion(question: NamingQuestion) {
-  // No real speech recognition here — this stands in for "whatever the
-  // patient actually said," which we don't know. It must NOT be the
-  // correct answer, or every voice submission would auto-pass.
-  return `mock name_image answer (${question.id})`;
 }
 
 function normalizeAnswer(answer: string) {
@@ -411,7 +404,7 @@ export function NamingTrainingSessionClient({
 
     async function loadSession() {
       if (sessionId) {
-        const sessionResult = await getMockNamingSessionById(sessionId);
+        const sessionResult = await getNamingSessionById(sessionId);
 
         if (!isActive) return;
 
@@ -438,45 +431,6 @@ export function NamingTrainingSessionClient({
         return;
       }
 
-      if (setId) {
-        const setResult = await getNamingSetById(setId);
-
-        if (!isActive) return;
-
-        if (!setResult.success) {
-          setErrorMessage(setResult.errorMessage);
-          setIsLoading(false);
-          return;
-        }
-
-        const authSession = getAuthSession();
-
-        if (authSession == null) {
-          setErrorMessage("Session not found!");
-          setIsLoading(false);
-          return;
-        }
-
-        const patientId = authSession.user.patientId!;
-        const sessionResult = await createMockNamingSession(
-          setResult.data.id,
-          patientId,
-        );
-
-        if (!isActive) return;
-
-        if (!sessionResult.success) {
-          setErrorMessage(sessionResult.errorMessage);
-          setIsLoading(false);
-          return;
-        }
-
-        setSet(setResult.data);
-        setSession(sessionResult.data);
-        setQuestionStartedAt(Date.now());
-        setIsLoading(false);
-        return;
-      }
 
       setErrorMessage("ไม่พบข้อมูล session หรือชุดแบบฝึก");
       setIsLoading(false);
@@ -551,7 +505,7 @@ export function NamingTrainingSessionClient({
     const isLastQuestion = currentQuestionIndex === set.totalQuestions - 1;
 
     if (isLastQuestion) {
-      const result = await getMockNamingSessionSummary(session.sessionId);
+      const result = await getNamingSessionSummary(session.sessionId);
       if (result.success) setSummary(result.data);
       return;
     }
@@ -569,21 +523,12 @@ export function NamingTrainingSessionClient({
 
     setIsSaving(true);
     const responseTimeMs = Math.max(0, Date.now() - questionStartedAt);
-    // Only fall back to the mock-recognition placeholder — never to
-    // currentQuestion.answer — so a plain mic tap without a typed answer
-    // is actually checked instead of auto-passing.
-    const mockAnswer =
-      submittedAnswer ??
-      (answerType === "mock_audio"
-        ? getMockAnswerForQuestion(currentQuestion)
-        : undefined);
-    const result = await submitMockNamingAnswer({
+    const result = await submitNamingAnswer({
       sessionId: session.sessionId,
       questionId: currentQuestion.id,
       setId: set.id,
       answerType,
       answerText: submittedAnswer,
-      mockAnswer,
       skipped: answerType === "skipped",
       hintLevelUsed: hintLevel,
       responseTimeMs,
@@ -850,7 +795,7 @@ export function NamingTrainingSessionClient({
         <header className="relative z-10 grid gap-4 lg:grid-cols-[180px_minmax(0,1fr)_180px]">
             <button
               className="inline-flex min-h-[52px] w-fit items-center justify-center rounded-full bg-white px-6 text-base font-semibold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF]"
-              onClick={() => router.replace("/patient/training/today")}
+              onClick={() => router.replace("/patient/home")}
               type="button"
             >
               ออกจากแบบฝึก

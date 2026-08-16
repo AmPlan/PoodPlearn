@@ -1,17 +1,10 @@
 export type TodayTrainingPlan = {
-  patientId: number;
-  planId: string;
-  sourceAssessmentId: string;
-  moduleId: string;
-  moduleName: string;
-  categoryId: string;
-  categoryName: string;
-  assignedSetId: string;
-  totalQuestions: number;
-  reason: string;
-  sessionId: string;
-  status: "ready" | "in_progress" | "completed";
-};
+		moduleName: string;
+		categoryId: string;
+		categoryName: string;
+		assignedSetId: string;
+		status: "PENDING" | "IN_REVIEW" | "COMPLETED" | "SKIPPED" | "EXPIRED";
+	};
 
 export type TrainingPlanServiceSuccessResult<T> = {
   success: true;

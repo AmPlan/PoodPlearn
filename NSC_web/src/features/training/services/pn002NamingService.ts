@@ -78,15 +78,6 @@ type SessionApiResponse = {
   };
 };
 
-type SessionItemApiResponse = {
-  message?: string;
-  isCorrect?: boolean;
-  score?: number;
-  correctness?: number;
-  data?: unknown;
-  error?: string; // Added to handle error payloads
-};
-
 type NamingSessionCategoryApiResult = {
   sessionCategoryId: number;
   sessionId: number;
@@ -252,7 +243,6 @@ export function getSavedNamingResponsesForPatient(_patientId: string) {
     response: {
       responseId: string;
       submittedAt: string;
-      mockAnswer?: string | null;
       skipped: boolean;
       isCorrect: boolean;
       hintLevelUsed?: number | null;
@@ -263,7 +253,7 @@ export function getSavedNamingResponsesForPatient(_patientId: string) {
   }>;
 }
 
-export async function createMockNamingSession(setId: NamingSet["id"], patientId: number): Promise<TrainingServiceResult<NamingSessionState>> {
+export async function createNamingSession(setId: NamingSet["id"], patientId: number): Promise<TrainingServiceResult<NamingSessionState>> {
   try {
     const baseUrl = getBaseUrl();
     const response = await fetch(`${baseUrl}/api/v1/sessions`, {
@@ -298,7 +288,7 @@ export async function createMockNamingSession(setId: NamingSet["id"], patientId:
   }
 }
 
-export async function getMockNamingSessionById(sessionId: string): Promise<TrainingServiceResult<NamingSessionState>> {
+export async function getNamingSessionById(sessionId: string): Promise<TrainingServiceResult<NamingSessionState>> {
   try {
     const baseUrl = getBaseUrl();
     const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}`, {
@@ -337,7 +327,7 @@ export async function getMockNamingSessionById(sessionId: string): Promise<Train
   }
 }
 
-export async function submitMockNamingAnswer(
+export async function submitNamingAnswer(
   response: Omit<NamingResponse, "responseId" | "submittedAt">
 ): Promise<TrainingServiceResult<SessionResponse>> {
   try {
@@ -413,7 +403,7 @@ export async function completeNamingSession(
   }
 }
 
-export async function getMockNamingSessionSummary(sessionId: string): Promise<TrainingServiceResult<NamingSessionSummary>> {
+export async function getNamingSessionSummary(sessionId: string): Promise<TrainingServiceResult<NamingSessionSummary>> {
   const completeResult = await completeNamingSession(sessionId);
 
   if (!completeResult.success) {
