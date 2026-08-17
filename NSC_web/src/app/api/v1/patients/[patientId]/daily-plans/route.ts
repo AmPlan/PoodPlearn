@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { title } from 'process';
 import { authorizePatientAccess, parsePatientId } from '@/lib/daily-plan/api-auth';
-import { startOfDay } from '@/lib/daily-plan/date-utils';
+import { parseLocalDate, startOfDay } from '@/lib/daily-plan/date-utils';
 import { buildEnrichedSchedule } from '@/lib/daily-plan/serialize';
 import { prisma } from '@/lib/prisma';
-import { title } from 'process';
 
 type DailyPlanContext = {
   params: { patientId: string } | Promise<{ patientId: string }>;
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest, context: DailyPlanContext) {
 
     const { searchParams } = new URL(req.url);
     const dateParam = searchParams.get('date');
-    const targetDate = startOfDay(dateParam ? new Date(dateParam) : new Date());
+    const targetDate = startOfDay(dateParam ? parseLocalDate(dateParam) : new Date());
 
     console.log(targetDate);
 
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest, context: DailyPlanContext) {
     const { patientId } = resolved;
 
     const body = (await req.json().catch(() => ({}))) as GenerateDailyTrainingPlanBody;
-    const targetDate = startOfDay(body.date ? new Date(body.date) : new Date());
+    const targetDate = startOfDay(body.date ? parseLocalDate(body.date) : new Date());
 
     if (Number.isNaN(targetDate.getTime())) {
       return NextResponse.json({ error: 'Invalid date.' }, { status: 400 });
@@ -128,7 +128,7 @@ export async function POST(req: NextRequest, context: DailyPlanContext) {
       where: {
         patientId,
         scheduledDate: targetDate,
-        status: { in: ['PENDING', 'IN_REVIEW'] },
+        status: { in: ['PENDING', 'COMPLETED'] },
       },
       include: {
         trainingPlan: {

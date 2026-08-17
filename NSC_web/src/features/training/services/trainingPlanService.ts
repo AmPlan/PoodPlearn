@@ -2,6 +2,7 @@ import type {
 	TodayTrainingPlan,
 	TrainingPlanServiceResult,
 } from "../types/trainingPlan.types";
+import { formatLocalDate } from "@/lib/daily-plan/date-utils";
 
 const DAILY_PLAN_API_BASE = "/api/v1/patients";
 
@@ -46,7 +47,7 @@ export async function getTodayTrainingPlan(
 		return createFailure("ไม่พบข้อมูลผู้ป่วย");
 	}
 
-	const date = new Date().toISOString().slice(0, 10);
+	const date = formatLocalDate(new Date());
 	const url = `${DAILY_PLAN_API_BASE}/${patientId}/daily-plans?date=${date}`;
 
 	try {
@@ -90,6 +91,7 @@ export async function getTodayTrainingPlan(
 				categoryId: payload.category.categoryId.toString(),
 				categoryName: displayCategoryName,
 				assignedSetId: planEntry.trainingPlan.trainingSetId.toString(),
+				dailyPlanScheduleId: planEntry.dailyPlanSchedule.dailyPlanScheduleId.toString(),
 				status: schedule.status,
 			});
 		});

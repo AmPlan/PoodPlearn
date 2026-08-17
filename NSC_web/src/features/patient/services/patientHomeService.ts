@@ -12,6 +12,11 @@ type PatientHomeApiResponse = {
 		type: PatientHomeState;
 		targetPath: string;
 	};
+	weekStreak: Array<{
+		label: string;
+		score: number | null;
+		isToday?: boolean;
+	}>;
 };
 
 export async function getPatientHomeData(
@@ -55,6 +60,7 @@ export async function getPatientHomeData(
         type: payload.nextAction.type,
         targetPath: payload.nextAction.targetPath,
       },
+      weekStreak: payload.weekStreak ?? [],
     },
   };
 }

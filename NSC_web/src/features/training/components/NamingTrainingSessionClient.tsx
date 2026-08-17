@@ -505,7 +505,20 @@ export function NamingTrainingSessionClient({
     const isLastQuestion = currentQuestionIndex === set.totalQuestions - 1;
 
     if (isLastQuestion) {
-      const result = await getNamingSessionSummary(session.sessionId);
+      const storedDailyPlanScheduleId =
+        typeof window !== "undefined"
+          ? window.sessionStorage.getItem("dailyPlanScheduleId") ?? undefined
+          : undefined;
+
+      const result = await getNamingSessionSummary(
+        session.sessionId,
+        storedDailyPlanScheduleId,
+      );
+
+      if (typeof window !== "undefined") {
+        window.sessionStorage.removeItem("dailyPlanScheduleId");
+      }
+
       if (result.success) setSummary(result.data);
       return;
     }

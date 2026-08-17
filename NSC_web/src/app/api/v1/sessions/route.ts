@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma';
 type CreateSessionBody = {
   patientId?: number;
   setId: number;
+  dailyPlanScheduleId?: number;
 };
 
 export async function GET(req: NextRequest) {
@@ -123,6 +124,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (
+      body.dailyPlanScheduleId !== undefined &&
+      (!Number.isInteger(body.dailyPlanScheduleId) || body.dailyPlanScheduleId <= 0)
+    ) {
+      return NextResponse.json(
+        { error: 'dailyPlanScheduleId must be a positive integer.' },
+        { status: 400 }
+      );
+    }
 
     if (session.role !== 'THERAPIST' && session.patientId !== body.patientId) {
       return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
@@ -142,6 +152,28 @@ export async function POST(req: NextRequest) {
           patientId: body.patientId!,
         },
       });
+
+      if (body.dailyPlanScheduleId) {
+        const dailyPlanSchedule = await tx.dailyPlanSchedule.findUnique({
+          where: { dailyPlanScheduleId: body.dailyPlanScheduleId },
+          select: { patientId: true, status: true },
+        });
+
+        if (!dailyPlanSchedule) {
+          throw new Error('Daily plan schedule not found.');
+        }
+
+        if (dailyPlanSchedule.patientId !== body.patientId) {
+          throw new Error('Daily plan schedule does not belong to this patient.');
+        }
+
+        await tx.dailyPlanSchedule.update({
+          where: { dailyPlanScheduleId: body.dailyPlanScheduleId },
+          data: {
+            sessionId: sessionResult.sessionId,
+          },
+        });
+      }
 
       let sessionCategoryResult = null;
 

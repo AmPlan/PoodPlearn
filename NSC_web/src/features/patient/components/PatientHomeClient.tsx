@@ -2,56 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { MouseEvent } from "react";
+import type { JSX, MouseEvent } from "react";
 import { useEffect, useState } from "react";
 import {
 	clearAuthSession,
 	getAuthSession,
 } from "@/features/auth/services/authSession";
+import { createNamingSession } from "@/features/training/services/pn002NamingService";
 import { getTodayTrainingPlan } from "@/features/training/services/trainingPlanService";
 import { getPatientHomeData } from "../services/patientHomeService";
-import type { PatientHomeData } from "../types/patientHome.types";
-import { createNamingSession } from "@/features/training/services/pn002NamingService";
-
-type WeekStreakDay = {
-	label: string;
-	score: number | null;
-	isToday?: boolean;
-};
-
-const THAI_WEEKDAY_LABELS = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
-
-const mockScoresEndingToday: Array<number | null> = [
-	80,
-	95,
-	60,
-	65,
-	72,
-	88,
-	null,
-];
-
-
-
-function buildLastSevenDays(scores: Array<number | null>): WeekStreakDay[] {
-	const today = new Date();
-
-	return scores.map((score, index) => {
-		const offsetFromToday = scores.length - 1 - index;
-		const date = new Date(today);
-		date.setDate(today.getDate() - offsetFromToday);
-
-		return {
-			label: THAI_WEEKDAY_LABELS[date.getDay()],
-			score,
-			isToday: offsetFromToday === 0,
-		};
-	});
-}
-
-const mockWeekStreak: WeekStreakDay[] = buildLastSevenDays(
-	mockScoresEndingToday,
-);
+import type { PatientHomeData, WeekStreakDay } from "../types/patientHome.types";
 
 function WeekStreak({ days }: { days: WeekStreakDay[] }) {
 	return (
@@ -109,6 +69,11 @@ function WeekStreak({ days }: { days: WeekStreakDay[] }) {
 	);
 }
 
+function PlanElement({ text, isFinished}: { text: string; isFinished: boolean }) {
+	const className = isFinished ? "line-through text-gray-400" : "";
+
+	return <span className={className}>{text}</span>;
+}
 
 export function PatientHomeClient() {
 	const router = useRouter();
@@ -126,6 +91,8 @@ export function PatientHomeClient() {
 	const [showStartToast, setShowStartToast] = useState(false);
 	const [isStartingAction, setIsStartingAction] = useState(false);
 	const [assignedSetId, setAssignedSetId] = useState("");
+	const [dailyPlanScheduleId, setDailyPlanScheduleId] = useState("");
+	const [todayPlans, setTodayPlans] = useState<JSX.Element[] | undefined>();
 
 	useEffect(() => {
 		let isActive = true;
@@ -156,27 +123,44 @@ export function PatientHomeClient() {
 			switch (result.data.nextAction.type) {
 				case "has_daily_training_plan": {
 					const todayPlanResult = await getTodayTrainingPlan(Number(patientId));
-					const todayPlanData = todayPlanResult.data;
+					const todayPlanData = [...(todayPlanResult.data ?? [])].sort((a, b) => {
+						if (a.status === "PENDING" && b.status !== "PENDING") return -1;
+						if (a.status !== "PENDING" && b.status === "PENDING") return 1;
+						return 0;
+					});
 					
-					const planList: string[] = [];
+					const planList: JSX.Element[] = [];
+					
+					let currentPlan;
 
-					if (todayPlanData) {
-						for (let i: number = 0; i < todayPlanResult.data?.length; i++) {
+					if (todayPlanData.length > 0) {
+						for (let i: number = 0; i < todayPlanData.length; i++) {
 							const planEntry = todayPlanData[i];
-							planList.push((i+1) + ". " + planEntry.moduleName)
+							const text = (i+1) + ". " + planEntry.moduleName;
+							planList.push(
+								<PlanElement
+									text={text}
+									isFinished={planEntry.status === "COMPLETED"}
+									key={i}
+								/>,
+							);
 							
-							if (planEntry.status === "PENDING" && assignedSetId === "") {
-								setAssignedSetId(planEntry.assignedSetId);
+							if (planEntry.status === "PENDING" && !currentPlan) {
+								currentPlan = planEntry;
 							}
 						}
 					}
+					if (currentPlan) {
+						setAssignedSetId(currentPlan.assignedSetId);
+						setDailyPlanScheduleId(currentPlan.dailyPlanScheduleId);
+					}
 
-					const descriptionText = todayPlanResult.success ? planList.join("\n") : "Error";
-
+					setTodayPlans(planList);
+					
 					setHomeAction({
 						eyebrow: "แผนการฝึก",
 						title: "เป้าหมายวันนี้",
-						description: descriptionText,
+						description: "",
 						progressPercent: 0,
 						buttonText: "เริ่มฝึกวันนี้",
 					});
@@ -204,7 +188,7 @@ export function PatientHomeClient() {
 		return () => {
 			isActive = false;
 		};
-	}, [assignedSetId, router]);
+	}, [router]);
 
 	function handleLogout() {
 		clearAuthSession();
@@ -233,11 +217,19 @@ export function PatientHomeClient() {
 		}
 
 		if (assignedSetId) {
+			if (typeof window !== "undefined") {
+				window.sessionStorage.setItem("dailyPlanScheduleId", dailyPlanScheduleId);
+			}
+
 			setShowStartToast(true);
 			setIsStartingAction(true);
 			setIsLoading(true);
 
-			const sessionResult = await createNamingSession(assignedSetId, patientId);
+			const sessionResult = await createNamingSession(
+				assignedSetId,
+				patientId,
+				dailyPlanScheduleId,
+			);
 
 			if (!sessionResult.success) {
 				setErrorMessage(sessionResult.errorMessage);
@@ -296,7 +288,7 @@ export function PatientHomeClient() {
 										<p className="mb-4 text-lg font-bold sm:text-3xl">
 											การฝึกต่อเนื่อง 7 วันล่าสุด
 										</p>
-										<WeekStreak days={mockWeekStreak} />
+<WeekStreak days={homeData.weekStreak} />
 									</div>
 
 									<div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#DDF2F3] sm:h-24 sm:w-24">
@@ -335,7 +327,7 @@ export function PatientHomeClient() {
 										{homeAction.title}
 									</h2>
 									<p className="mt-3 text-xl font-medium leading-relaxed pl-3 whitespace-pre-wrap">
-										{homeAction.description}
+										{todayPlans?.flatMap((val, i) => i === 0 ? [val] : [<br key={i+0.5} />, val])}
 									</p>
 
 									<div className="relative mt-10">
@@ -361,7 +353,7 @@ export function PatientHomeClient() {
 										<p className="mb-4 text-3xl font-bold">
 											การฝึกต่อเนื่อง 7 วันล่าสุด
 										</p>
-										<WeekStreak days={mockWeekStreak} />
+										<WeekStreak days={homeData.weekStreak} />
 									</div>
 								</article>
 							)}

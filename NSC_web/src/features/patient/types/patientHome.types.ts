@@ -3,6 +3,12 @@ export type PatientHomeState =
 	| "has_daily_training_plan"
 	| "finished_daily_training_plan";
 
+export type WeekStreakDay = {
+	label: string;
+	score: number | null;
+	isToday?: boolean;
+};
+
 export type PatientHomeData = {
 	patient: {
 		id: string;
@@ -13,6 +19,7 @@ export type PatientHomeData = {
 		type: PatientHomeState;
 		targetPath: string;
 	};
+	weekStreak: WeekStreakDay[];
 };
 
 export type PatientHomeSuccessResult = {

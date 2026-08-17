@@ -3,6 +3,7 @@ export type TodayTrainingPlan = {
 		categoryId: string;
 		categoryName: string;
 		assignedSetId: string;
+		dailyPlanScheduleId: string;
 		status: "PENDING" | "IN_REVIEW" | "COMPLETED" | "SKIPPED" | "EXPIRED";
 	};
 

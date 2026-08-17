@@ -253,13 +253,21 @@ export function getSavedNamingResponsesForPatient(_patientId: string) {
   }>;
 }
 
-export async function createNamingSession(setId: NamingSet["id"], patientId: number): Promise<TrainingServiceResult<NamingSessionState>> {
+export async function createNamingSession(
+  setId: NamingSet["id"],
+  patientId: number,
+  dailyPlanScheduleId?: string,
+): Promise<TrainingServiceResult<NamingSessionState>> {
   try {
     const baseUrl = getBaseUrl();
     const response = await fetch(`${baseUrl}/api/v1/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ patientId, setId: Number(setId) }),
+      body: JSON.stringify({
+        patientId,
+        setId: Number(setId),
+        dailyPlanScheduleId: dailyPlanScheduleId ? Number(dailyPlanScheduleId) : undefined,
+      }),
       cache: "no-store",
     });
 
@@ -371,7 +379,8 @@ export async function submitNamingAnswer(
  * completed, and updates progress tracking.
  */
 export async function completeNamingSession(
-  sessionId: string
+  sessionId: string,
+  dailyPlanScheduleId?: string,
 ): Promise<TrainingServiceResult<CompleteNamingSessionResult>> {
   try {
     const numericSessionId = Number(sessionId);
@@ -384,6 +393,9 @@ export async function completeNamingSession(
     const response = await fetch(`${baseUrl}/api/v1/sessions/${numericSessionId}/complete`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        dailyPlanScheduleId: dailyPlanScheduleId ? Number(dailyPlanScheduleId) : undefined,
+      }),
       cache: "no-store",
     });
 
@@ -403,8 +415,11 @@ export async function completeNamingSession(
   }
 }
 
-export async function getNamingSessionSummary(sessionId: string): Promise<TrainingServiceResult<NamingSessionSummary>> {
-  const completeResult = await completeNamingSession(sessionId);
+export async function getNamingSessionSummary(
+  sessionId: string,
+  dailyPlanScheduleId?: string,
+): Promise<TrainingServiceResult<NamingSessionSummary>> {
+  const completeResult = await completeNamingSession(sessionId, dailyPlanScheduleId);
 
   if (!completeResult.success) {
     return createFailure(completeResult.errorMessage);

@@ -3,41 +3,78 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { AUTH_COOKIE_NAME, verifySession } from "@/lib/auth";
 import { getBaseUrl } from "@/lib/baseUrl";
+import { addDays, startOfDay } from "@/lib/daily-plan/date-utils";
 import { prisma } from "@/lib/prisma";
 
-async function checkHasFinishedTodayPlan(patientId: number) {
-	const lastSession = await prisma.sessionResult.findFirst({
-		where: { patientId },
-		orderBy: { sessionId: "desc" },
-		select: {
-			sessionCategoryResult: {
-				select: {
-					endedAt: true,
-				},
+const THAI_WEEKDAY_LABELS = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
+
+function formatLocalDateKey(date: Date) {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
+}
+
+async function buildWeekStreak(patientId: number) {
+	const today = startOfDay(new Date());
+	const startDate = addDays(today, -6);
+
+	const scheduleRows = await prisma.dailyPlanSchedule.findMany({
+		where: {
+			patientId,
+			scheduledDate: {
+				gte: startDate,
+				lte: today,
 			},
+		},
+		select: {
+			scheduledDate: true,
+			status: true,
+		},
+		orderBy: {
+			scheduledDate: "asc",
 		},
 	});
 
-	
-
-	const endedAt = lastSession?.sessionCategoryResult?.endedAt;
-	if (!endedAt) {
-		return false;
+	const statusByDate = new Map<string, Array<string>>();
+	for (const row of scheduleRows) {
+		const key = formatLocalDateKey(startOfDay(row.scheduledDate));
+		const statuses = statusByDate.get(key) ?? [];
+		statuses.push(row.status);
+		statusByDate.set(key, statuses);
 	}
 
-	const now = new Date();
-	const startOfToday = new Date(
-		now.getFullYear(),
-		now.getMonth(),
-		now.getDate(),
-	);
-	const startOfTomorrow = new Date(
-		now.getFullYear(),
-		now.getMonth(),
-		now.getDate() + 1,
-	);
+	return Array.from({ length: 7 }, (_, index) => {
+		const date = addDays(today, -(6 - index));
+		const key = formatLocalDateKey(startOfDay(date));
+		const statuses = statusByDate.get(key) ?? [];
+		const hasCompletedDay =
+			statuses.length > 0 && statuses.every((status) => status === "COMPLETED");
 
-	return endedAt >= startOfToday && endedAt < startOfTomorrow;
+		return {
+			label: THAI_WEEKDAY_LABELS[date.getDay()],
+			score: hasCompletedDay ? 100 : null,
+			isToday: index === 6,
+		};
+	});
+}
+
+async function checkHasFinishedTodayPlan(patientId: number) {
+	const targetDate = startOfDay(new Date());
+	console.log(targetDate);
+	const sessionsStatus = await prisma.dailyPlanSchedule.findMany({
+		where: { patientId, scheduledDate: targetDate },
+		orderBy: { sessionId: "desc" },
+		select: {
+			status: true,
+		},
+	});
+
+	const isFinished = sessionsStatus.length !== 0 && sessionsStatus.every((sessionStatus) => {
+		return sessionStatus.status === "COMPLETED";
+	})
+
+	return isFinished;
 }
 
 async function checkHasFinishedAssessment(baseUrl: string, patientId: number) {
@@ -101,6 +138,8 @@ export async function GET(req: NextRequest) {
 			);
 		}
 
+		const weekStreak = await buildWeekStreak(patient.patientId);
+
 		const hasFinishedAssessment = await checkHasFinishedAssessment(
 			getBaseUrl(),
 			patient.patientId,
@@ -121,10 +160,10 @@ export async function GET(req: NextRequest) {
 					targetPath: "/patient/training/today",
 				};
 			} else {
-        nextAction = {
-          type: "finished_daily_training_plan",
-          targetPath: "/"
-        };
+				nextAction = {
+					type: "finished_daily_training_plan",
+					targetPath: "/",
+				};
 			}
 		}
 
@@ -135,6 +174,7 @@ export async function GET(req: NextRequest) {
 					name: patient.patientFirstName,
 				},
 				nextAction,
+				weekStreak,
 			},
 			{ status: 200 },
 		);
