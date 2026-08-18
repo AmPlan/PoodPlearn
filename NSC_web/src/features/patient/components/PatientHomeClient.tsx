@@ -158,11 +158,11 @@ export function PatientHomeClient() {
 					setTodayPlans(planList);
 					
 					setHomeAction({
-						eyebrow: "แผนการฝึก",
-						title: "เป้าหมายวันนี้",
+						eyebrow: "มาเริ่มฝึกกันเถอะ!",
+						title: "กิจกรรมวันนี้",
 						description: "",
 						progressPercent: 0,
-						buttonText: "เริ่มฝึกวันนี้",
+						buttonText: "เริ่มกันเลย!",
 					});
 					break;
 				}
@@ -286,9 +286,9 @@ export function PatientHomeClient() {
 								<article className="rounded-[34px] border border-[#C8E9EA] bg-white px-7 py-10 text-center shadow-[0_22px_55px_rgba(24,112,108,0.1)] sm:px-10 sm:py-12">
 									<div className="mb-10 border-b border-[#E3F3F4] pb-8">
 										<p className="mb-4 text-lg font-bold sm:text-3xl">
-											การฝึกต่อเนื่อง 7 วันล่าสุด
+											ผลงานของท่าน 7 วันที่ผ่านมา
 										</p>
-<WeekStreak days={homeData.weekStreak} />
+										<WeekStreak days={homeData.weekStreak} />
 									</div>
 
 									<div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#DDF2F3] sm:h-24 sm:w-24">
@@ -309,10 +309,10 @@ export function PatientHomeClient() {
 									</div>
 
 									<h2 className="mt-6 text-3xl font-bold leading-tight text-[#1A7F78] sm:text-4xl">
-										ท่านฝึกครบตามแผนวันนี้แล้ว
+										วันนี้เก่งมากเลยค่ะ ทำครบหมดแล้ว!
 									</h2>
 									<p className="mt-4 text-xl font-medium leading-relaxed text-[#4E6D70] sm:text-2xl">
-										พบกันใหม่ในวันพรุ่งนี้นะคะ
+										พักผ่อนเยอะๆ นะคะ แล้วพรุ่งนี้เจอกันค่ะ
 									</p>
 								</article>
 							) : (
@@ -327,7 +327,9 @@ export function PatientHomeClient() {
 										{homeAction.title}
 									</h2>
 									<p className="mt-3 text-xl font-medium leading-relaxed pl-3 whitespace-pre-wrap">
-										{todayPlans?.flatMap((val, i) => i === 0 ? [val] : [<br key={i+0.5} />, val])}
+										{todayPlans?.flatMap((val, i) =>
+											i === 0 ? [val] : [<br key={i + 0.5} />, val],
+										)}
 									</p>
 
 									<div className="relative mt-10">
@@ -351,7 +353,7 @@ export function PatientHomeClient() {
 									</div>
 									<div className="border-t border-[#E3F3F4] pt-4 mt-8">
 										<p className="mb-4 text-3xl font-bold">
-											การฝึกต่อเนื่อง 7 วันล่าสุด
+											ผลงานของท่าน 7 วันที่ผ่านมา
 										</p>
 										<WeekStreak days={homeData.weekStreak} />
 									</div>
