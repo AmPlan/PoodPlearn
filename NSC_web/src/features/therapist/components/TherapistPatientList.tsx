@@ -8,6 +8,7 @@ import {
   deletePatient,
   getTherapistDashboardData,
 } from "../services/therapistDashboardService";
+import PatientCodeCopyButton from "./PatientCodeCopyButton";
 
 type TherapistPatientListProps = {
   patients: TherapistPatientSummary[];
@@ -27,7 +28,6 @@ function formatDateTime(value: string | undefined) {
 export default function TherapistPatientList({ patients }: TherapistPatientListProps) {
   const router = useRouter();
   const [visiblePatients, setVisiblePatients] = useState(patients);
-  const [copiedPatientId, setCopiedPatientId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const displayedPatients = useMemo(() => {
@@ -77,15 +77,6 @@ export default function TherapistPatientList({ patients }: TherapistPatientListP
     }
   }
 
-  async function handleCopyPatientCode(patientId: string, patientCode: string) {
-    if (typeof navigator === "undefined" || !navigator.clipboard) {
-      return;
-    }
-
-    await navigator.clipboard.writeText(patientCode);
-    setCopiedPatientId(patientId);
-  }
-
   return (
     <div className="grid gap-4">
       <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -116,14 +107,7 @@ export default function TherapistPatientList({ patients }: TherapistPatientListP
             <div>
               <p className="text-2xl font-bold text-[#123232]">{patient.name}</p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-[#EAF9F8] px-4 py-1 text-sm font-bold text-[#0F756F] ring-1 ring-[#CDEEEF]">
-                  Patient Code {patient.code}
-                </span>
-                {copiedPatientId === patient.id ? (
-                  <span className="text-sm font-bold text-[#12847D]">
-                    คัดลอกรหัสแล้ว
-                  </span>
-                ) : null}
+                <PatientCodeCopyButton patientCode={patient.code} />
               </div>
               <p className="mt-2 text-lg font-semibold text-[#557276]">
                 อายุ {patient.age} ปี · ฝึกล่าสุด {formatDateTime(patient.lastSessionAt || patient.latestAssessmentDate)}
@@ -142,13 +126,6 @@ export default function TherapistPatientList({ patients }: TherapistPatientListP
               >
                 แก้ไข
               </Link>
-              <button
-                type="button"
-                onClick={() => handleCopyPatientCode(patient.id, patient.code)}
-                className="inline-flex min-h-[50px] items-center justify-center rounded-full bg-white px-5 text-base font-bold text-[#13756F] ring-1 ring-[#CDEEEF] hover:bg-[#F7FFFF]"
-              >
-                คัดลอกรหัส
-              </button>
               <button
                 type="button"
                 onClick={() => handleDelete(patient.id)}

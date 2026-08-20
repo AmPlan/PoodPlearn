@@ -12,8 +12,9 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { AnswerResultOverlay } from "@/components/training/AnswerResultOverlay";
+import { AudioWaves } from "@/components/training/AudioWaves";
 import { FeedbackBubble } from "@/components/ui/FeedbackBubble";
-import { FeedbackOverlay } from "@/components/ui/FeedbackOverlay";
 import {
 	getStandardAssessmentSession,
 	saveStandardAssessmentAnswer,
@@ -565,32 +566,6 @@ function BackgroundDecorations() {
 	);
 }
 
-function AudioWaves() {
-	const waveHeights = [9, 20, 34, 50, 68, 50, 34, 20, 9];
-
-	return (
-		<>
-			<div className="absolute left-[8%] top-1/2 hidden -translate-y-1/2 items-center gap-2 text-[#86D9D2]/75 xl:flex">
-				{waveHeights.map((height, index) => (
-					<span
-						key={`l-wave-${index}`}
-						className="w-2.5 rounded-full bg-current"
-						style={{ height }}
-					/>
-				))}
-			</div>
-			<div className="absolute right-[8%] top-1/2 hidden -translate-y-1/2 items-center gap-2 text-[#86D9D2]/75 xl:flex">
-				{waveHeights.map((height, index) => (
-					<span
-						key={`r-wave-${index}`}
-						className="w-2.5 rounded-full bg-current"
-						style={{ height }}
-					/>
-				))}
-			</div>
-		</>
-	);
-}
 function SessionProgress({ percent }: { percent: number }) {
 	const safePercent = Math.min(100, Math.max(0, percent));
 
@@ -737,7 +712,7 @@ function VoiceControls({
 	const micButtonText = getVoiceButtonText(recordingState);
 
 	return (
-		<section className="flex min-h-0 min-w-0 flex-col items-center justify-center gap-2 overflow-visible text-center sm:gap-5">
+		<section className="flex min-h-0 min-w-0 w-full flex-col items-center justify-center gap-2 overflow-visible text-center sm:gap-5">
 			<div className="relative flex h-[clamp(82px,18dvh,190px)] w-full shrink-0 items-center justify-center sm:h-[clamp(120px,20dvh,220px)]">
 				<AudioWaves />
 				<button
@@ -758,7 +733,6 @@ function VoiceControls({
 					</span>
 				</button>
 			</div>
-
 			<button
 				type="button"
 				onClick={onMicrophoneToggle}
@@ -771,7 +745,6 @@ function VoiceControls({
 			>
 				{micButtonText}
 			</button>
-
 			<div className="relative">
 				{showReplayFeedback ? (
 					<p className="absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#123232] px-3 py-1 text-xs font-semibold text-white shadow-lg sm:-top-12 sm:px-5 sm:py-2 sm:text-base">
@@ -875,61 +848,6 @@ function ImageChoiceControls({
 	);
 }
 
-type ImageChoiceFeedbackOverlayProps = {
-	expectedAnswer?: string;
-	feedbackState: ChoiceFeedbackState;
-	visible: boolean;
-};
-
-function ImageChoiceFeedbackOverlay({
-	expectedAnswer,
-	feedbackState,
-	visible,
-}: ImageChoiceFeedbackOverlayProps) {
-	if (!visible || !feedbackState) {
-		return null;
-	}
-
-	const isCorrect = feedbackState === "correct";
-
-	return (
-		<div
-			className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-[#123232]/10 p-4"
-			aria-live="polite"
-		>
-			<div
-				className={`mx-auto w-full max-w-xl rounded-[22px] p-6 text-center shadow-[0_18px_40px_rgba(0,0,0,0.08)] sm:rounded-[28px] sm:p-8 ${
-					isCorrect ? "bg-[#E9F9F0]" : "bg-[#FFF1F3]"
-				}`}
-			>
-				<div
-					className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full text-white sm:h-20 sm:w-20 ${
-						isCorrect ? "bg-[#1FA89C]" : "bg-[#F97066]"
-					}`}
-					aria-hidden="true"
-				>
-					{isCorrect ? (
-						<Check className="h-8 w-8 sm:h-10 sm:w-10" strokeWidth={3} />
-					) : (
-						<X className="h-8 w-8 sm:h-10 sm:w-10" strokeWidth={3} />
-					)}
-				</div>
-				<h3 className="mt-4 text-2xl font-bold leading-tight text-[#123232] sm:mt-5 sm:text-3xl">
-					{isCorrect ? "ถูกต้อง! เก่งมากเลย" : "ยังไม่ถูกต้อง"}
-				</h3>
-				{isCorrect && expectedAnswer ? (
-					<p className="mt-3 text-base font-bold text-[#2C6A4F] sm:text-lg">
-						คำตอบที่ถูก: {expectedAnswer}
-					</p>
-				) : null}
-				<div className="mt-5 inline-flex items-center justify-center rounded-full bg-white/65 px-5 py-2.5 text-sm font-bold text-[#123232] sm:mt-6 sm:px-6 sm:py-3 sm:text-base">
-					กำลังบันทึกคำตอบ
-				</div>
-			</div>
-		</div>
-	);
-}
-
 /* ============================================================================
  * Yes/No controls
  * ==========================================================================*/
@@ -994,11 +912,11 @@ type BottomControlsProps = {
 
 function BottomControls({ isSkipping, onSkip }: BottomControlsProps) {
 	return (
-		<footer className="relative z-20 grid shrink-0 grid-cols-2 gap-2 pt-1 lg:absolute lg:bottom-6 lg:left-8 lg:right-8 lg:grid-cols-3 lg:items-center lg:pt-0">
+		<footer className="relative z-20 grid shrink-0 grid-cols-2 gap-2 pt-1 lg:absolute lg:bottom-6 lg:left-8 lg:right-8 lg:grid-cols-2 lg:items-center lg:pt-0">
 			<div className="hidden lg:block" />
-			<div className="flex justify-center lg:col-start-3 lg:justify-end">
+			<div className="col-span-2 flex justify-center sm:col-span-1 lg:col-start-3 lg:justify-end">
 				<button
-					className="inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-full bg-white px-3 text-xs font-semibold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.11)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF] focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-14 sm:w-auto sm:min-w-42.5 sm:gap-3 sm:px-6 sm:text-lg max-[480px]:min-h-8 max-[480px]:text-[11px]"
+					className="inline-flex min-h-9 w-auto items-center justify-center gap-1.5 rounded-full bg-white px-4 text-xs font-semibold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.11)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF] focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-14 sm:min-w-42.5 sm:gap-3 sm:px-6 sm:text-lg max-[480px]:min-h-8 max-[480px]:text-[11px]"
 					type="button"
 					disabled={isSkipping}
 					onClick={onSkip}
@@ -1062,7 +980,6 @@ export function AssessmentSessionClient() {
 	const [imageChoiceFeedbackVisible, setImageChoiceFeedbackVisible] =
 		useState(false);
 	const [isImageChoiceSaving, setIsImageChoiceSaving] = useState(false);
-	const [feedbackMockAnswer, setFeedbackMockAnswer] = useState<string>();
 	const [feedbackExpected, setFeedbackExpected] = useState<string | undefined>(
 		undefined,
 	);
@@ -1235,7 +1152,6 @@ export function AssessmentSessionClient() {
 		setImageChoiceFeedbackVisible(false);
 		setIsImageChoiceSaving(false);
 		setFeedbackExpected(undefined);
-		setFeedbackMockAnswer(undefined);
 		setErrorMessage("");
 		completedQuestionRef.current = null;
 	}
@@ -1322,24 +1238,24 @@ export function AssessmentSessionClient() {
 
 		completedQuestionRef.current = questionKey;
 
-		// Inside handleImageChoiceSelect
 		const nextPassedCount = passedCount + 1;
 		setPassedCount(nextPassedCount);
-		const showFeedback = triggerPositiveFeedback(nextPassedCount);
 
 		window.setTimeout(() => {
 			setImageChoiceFeedbackVisible(false);
 			setIsImageChoiceSaving(false);
 			submissionInFlightRef.current = false;
 
+			const showFeedback = triggerPositiveFeedback(nextPassedCount);
+
 			if (showFeedback) {
 				window.setTimeout(() => {
 					goToNextQuestionOrResult();
-				}, 3300);
+				}, 4500);
 			} else {
 				goToNextQuestionOrResult();
 			}
-		}, 1200);
+		}, 1200);	
 	}
 
 async function handleYesNoSelect(choice: QuestionChoice) {
@@ -1382,20 +1298,20 @@ async function handleYesNoSelect(choice: QuestionChoice) {
 	setImageChoiceFeedbackVisible(true);
 	setFeedbackExpected(currentQuestion.expectedAnswer);
 
-	// Increment submission count on every Yes/No answer
 	const nextPassedCount = passedCount + 1;
 	setPassedCount(nextPassedCount);
-	const showFeedback = triggerPositiveFeedback(nextPassedCount);
 
 	window.setTimeout(() => {
 		setImageChoiceFeedbackVisible(false);
 		setIsImageChoiceSaving(false);
 		submissionInFlightRef.current = false;
 
+		const showFeedback = triggerPositiveFeedback(nextPassedCount);
+
 		if (showFeedback) {
 			window.setTimeout(() => {
 				goToNextQuestionOrResult();
-			}, 3300);
+			}, 4500);
 		} else {
 			goToNextQuestionOrResult();
 		}
@@ -1545,16 +1461,24 @@ async function handleSkipQuestion() {
 
 			const nextPassedCount = passedCount + 1;
 			setPassedCount(nextPassedCount);
-			const showFeedback = triggerPositiveFeedback(nextPassedCount);
 
-			const delay = showFeedback ? 5000 : isCorrect ? 3000 : 2000;
+			const popupDelay = isCorrect ? 3000 : 2000;
 
 			window.setTimeout(() => {
 				setFeedbackVisible(false);
 				setRecordingState("idle");
 				submissionInFlightRef.current = false;
-				goToNextQuestionOrResult();
-			}, delay);
+
+				const showFeedback = triggerPositiveFeedback(nextPassedCount);
+
+				if (showFeedback) {
+					window.setTimeout(() => {
+						goToNextQuestionOrResult();
+					}, 4500);
+				} else {
+					goToNextQuestionOrResult();
+				}
+			}, popupDelay);
 		} catch (error: unknown) {
 			console.error("Upload error:", error);
 			const message = error instanceof Error ? error.message : String(error);
@@ -1642,7 +1566,7 @@ async function handleSkipQuestion() {
 						<QuestionCard question={currentQuestion} promptText={promptText} />
 					</div>
 
-					<div className="flex min-h-0 min-w-0 items-center justify-center overflow-visible">
+					<div className="flex min-h-0 min-w-0 w-full items-center justify-center overflow-visible">
 						{isVoiceQuestion ? (
 							<VoiceControls
 								recordingState={recordingState}
@@ -1651,7 +1575,6 @@ async function handleSkipQuestion() {
 								onReplayPrompt={handleReplayPrompt}
 							/>
 						) : null}
-
 						{isImageChoiceQuestion ? (
 							<ImageChoiceControls
 								choices={shuffledImageChoices}
@@ -1661,7 +1584,6 @@ async function handleSkipQuestion() {
 								onSelect={handleImageChoiceSelect}
 							/>
 						) : null}
-
 						{isYesNoQuestion ? (
 							<YesNoControls
 								choices={currentQuestion.choices}
@@ -1676,20 +1598,25 @@ async function handleSkipQuestion() {
 
 				<BottomControls isSkipping={isSkipping} onSkip={handleSkipQuestion} />
 
-				<FeedbackOverlay
+				<AnswerResultOverlay
 					visible={feedbackVisible}
-					type={feedbackType}
-					mockAnswer={feedbackMockAnswer}
-					expectedAnswer={feedbackExpected}
+					feedbackState={
+						feedbackType === "correct"
+							? "correct"
+							: feedbackType === "wrong"
+								? "wrong"
+								: null
+					}
+					correctAnswer={feedbackExpected}
 					onClose={() => setFeedbackVisible(false)}
 				/>
 
-				<ImageChoiceFeedbackOverlay
-					expectedAnswer={currentQuestion.expectedAnswer}
-					feedbackState={imageChoiceFeedbackState}
+				<AnswerResultOverlay
 					visible={imageChoiceFeedbackVisible}
+					feedbackState={imageChoiceFeedbackState}
+					correctAnswer={currentQuestion.expectedAnswer}
+					onClose={() => setImageChoiceFeedbackVisible(false)}
 				/>
-
 				<FeedbackBubble message="" isVisible={false} />
 			</section>
 			<FeedbackBubble

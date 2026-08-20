@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -25,7 +26,8 @@ import type {
 	NamingSet,
 } from "../types/pn002Naming.types";
 import { TrainingImageFrame } from "./TrainingImageFrame";
-import { Check, X } from "lucide-react";
+import { AudioWaves } from "@/components/training/AudioWaves";
+import { AnswerResultOverlay } from "@/components/training/AnswerResultOverlay";
 
 // --- Types ---
 type RecordingState = "idle" | "recording" | "processing" | "recorded";
@@ -812,6 +814,10 @@ export function NamingTrainingSessionClient({
 					</div>
 
 					<section className="flex min-h-0 min-w-0 flex-col items-center justify-center gap-2 overflow-visible text-center sm:gap-5">
+						<div
+							className="min-h-0 lg:min-h-12"
+							aria-hidden="true"
+						/>
 						<div className="relative flex h-[clamp(82px,18dvh,190px)] w-full shrink-0 items-center justify-center sm:h-[clamp(120px,20dvh,220px)]">
 							<AudioWaves />
 
@@ -904,7 +910,7 @@ export function NamingTrainingSessionClient({
 				}}
 			/>
 
-			<NamingResultOverlay
+			<AnswerResultOverlay
 				visible={answerFeedbackVisible}
 				feedbackState={answerFeedback}
 				correctAnswer={currentQuestion.answer}
@@ -1072,58 +1078,6 @@ function HintOverlay({
 	);
 }
 
-function NamingResultOverlay({
-	visible,
-	feedbackState,
-	correctAnswer,
-	onClose,
-}: {
-	visible: boolean;
-	feedbackState: AnswerFeedbackState;
-	correctAnswer?: string;
-	onClose: () => void;
-}) {
-	if (!visible || !feedbackState) return null;
-
-	const isCorrect = feedbackState === "correct";
-
-	return (
-		<div
-			className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-[#123232]/10 p-4"
-			aria-live="polite"
-		>
-			<div
-				className={`mx-auto w-full max-w-xl rounded-[22px] p-6 text-center shadow-[0_18px_40px_rgba(0,0,0,0.08)] sm:rounded-[28px] sm:p-8 ${
-					isCorrect ? "bg-[#E9F9F0]" : "bg-[#FFF1F3]"
-				}`}
-			>
-				<div
-					className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full text-white sm:h-20 sm:w-20 ${
-						isCorrect ? "bg-[#1FA89C]" : "bg-[#F97066]"
-					}`}
-					aria-hidden="true"
-				>
-					{isCorrect ? (
-						<Check className="h-8 w-8 sm:h-10 sm:w-10" strokeWidth={3} />
-					) : (
-						<X className="h-8 w-8 sm:h-10 sm:w-10" strokeWidth={3} />
-					)}
-				</div>
-
-				<h3 className="mt-4 text-2xl font-bold leading-tight text-[#123232] sm:mt-5 sm:text-3xl">
-					{isCorrect ? "ถูกต้อง! เก่งมากเลย" : "ยังไม่ถูกต้อง"}
-				</h3>
-
-				{!isCorrect && correctAnswer ? (
-					<p className="mt-3 text-base font-bold text-[#B42318] sm:text-lg">
-						โปรดลองอีกครั้ง
-					</p>
-				) : null}
-			</div>
-		</div>
-	);
-}
-
 function BackgroundDecorations() {
 	return (
 		<div
@@ -1134,38 +1088,6 @@ function BackgroundDecorations() {
 
 			<div className="absolute -bottom-14 right-0 h-44 w-[52%] rounded-tl-[100%] bg-[#D8F4F0]/78" />
 		</div>
-	);
-}
-
-function AudioWaves() {
-	const waveHeights = [9, 20, 34, 50, 68, 50, 34, 20, 9];
-
-	return (
-		<>
-			<div className="absolute left-[8%] top-1/2 hidden -translate-y-1/2 items-center gap-2 text-[#86D9D2]/75 xl:flex">
-				{waveHeights.map((height, index) => (
-					<span
-						key={`l-wave-${index}`}
-						className="w-2.5 rounded-full bg-current"
-						style={{
-							height,
-						}}
-					/>
-				))}
-			</div>
-
-			<div className="absolute right-[8%] top-1/2 hidden -translate-y-1/2 items-center gap-2 text-[#86D9D2]/75 xl:flex">
-				{waveHeights.map((height, index) => (
-					<span
-						key={`r-wave-${index}`}
-						className="w-2.5 rounded-full bg-current"
-						style={{
-							height,
-						}}
-					/>
-				))}
-			</div>
-		</>
 	);
 }
 

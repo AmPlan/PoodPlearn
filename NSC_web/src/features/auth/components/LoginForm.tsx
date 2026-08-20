@@ -10,7 +10,7 @@ function BrandMark() {
 	return (
 		<svg
 			aria-hidden="true"
-			className="h-19.5 w-19.5 shrink-0 text-[#118a82] sm:h-23 sm:w-23"
+			className="h-12 w-12 shrink-0 text-[#118a82] sm:h-16 sm:w-16 md:h-23 md:w-23"
 			viewBox="0 0 96 96"
 			fill="none"
 		>
@@ -44,7 +44,7 @@ function LockIcon() {
 	return (
 		<svg
 			aria-hidden="true"
-			className="h-8 w-8 shrink-0 text-[#7a858f]"
+			className="h-6 w-6 shrink-0 text-[#7a858f] sm:h-8 sm:w-8"
 			viewBox="0 0 24 24"
 			fill="none"
 		>
@@ -71,7 +71,7 @@ function InfoIcon() {
 	return (
 		<svg
 			aria-hidden="true"
-			className="h-7 w-7 shrink-0 text-[#118a82]"
+			className="h-6 w-6 shrink-0 text-[#118a82] sm:h-7 sm:w-7"
 			viewBox="0 0 24 24"
 			fill="none"
 		>
@@ -91,7 +91,7 @@ function LoginIcon() {
 	return (
 		<svg
 			aria-hidden="true"
-			className="h-8 w-8 shrink-0"
+			className="h-6 w-6 shrink-0 sm:h-8 sm:w-8"
 			viewBox="0 0 24 24"
 			fill="none"
 		>
@@ -116,7 +116,7 @@ function ShieldIcon() {
 	return (
 		<svg
 			aria-hidden="true"
-			className="h-8 w-8 shrink-0"
+			className="h-6 w-6 shrink-0 sm:h-8 sm:w-8"
 			viewBox="0 0 28 28"
 			fill="none"
 		>
@@ -161,7 +161,6 @@ export function LoginForm() {
 	const errorId = useId();
 	const [accessCode, setAccessCode] = useState("");
 	const [errorMessage, setErrorMessage] = useState("");
-	const [isSubmitting, setIsSubmitting] = useState(false);
 	const submitButtonLabel = accessCode.trim().toUpperCase().startsWith("P-")
 		? "เข้าเริ่มฝึก"
 		: "เข้าใช้งาน";
@@ -169,7 +168,6 @@ export function LoginForm() {
 	async function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		setErrorMessage("");
-		setIsSubmitting(true);
 
 		const formData = new FormData(event.currentTarget);
 		const submittedAccessCode = String(
@@ -179,7 +177,6 @@ export function LoginForm() {
 
 		if (!result.success) {
 			setErrorMessage(result.errorMessage);
-			setIsSubmitting(false);
 			return;
 		}
 
@@ -188,75 +185,79 @@ export function LoginForm() {
 	}
 
 	return (
-		<section className="relative min-h-dvh overflow-hidden bg-[#ddf6f6] px-4 py-6 text-[#173d3f] sm:px-6 lg:px-10">
+		<section className="relative flex min-h-dvh flex-col overflow-hidden bg-[#ddf6f6] px-4 py-2 text-[#173d3f] sm:px-6 sm:py-6 lg:px-10">
 			<div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.92)_0_16%,transparent_42%),linear-gradient(180deg,#e9fbfb_0%,#dff6f6_54%,#cfefec_100%)]" />
 			<div className="pointer-events-none absolute -left-28 -bottom-30 h-80 w-130 rounded-[50%] bg-[#b7e7e3]/80" />
 			<div className="pointer-events-none absolute -right-36 -bottom-35 h-96 w-125 rounded-[50%] bg-[#bdebe7]/80" />
-			<div className="pointer-events-none absolute left-8 top-[10%] h-5 w-28 rounded-full bg-white/75 shadow-[-24px_12px_0_-3px_rgba(255,255,255,0.86),38px_-8px_0_7px_rgba(255,255,255,0.82)]" />
-			<div className="pointer-events-none absolute right-7 top-[8%] h-9 w-32 rounded-full bg-white/75 shadow-[-25px_10px_0_-5px_rgba(255,255,255,0.9),22px_-16px_0_6px_rgba(255,255,255,0.88)]" />
+			<div className="pointer-events-none absolute left-8 top-[10%] hidden h-5 w-28 rounded-full bg-white/75 shadow-[-24px_12px_0_-3px_rgba(255,255,255,0.86),38px_-8px_0_7px_rgba(255,255,255,0.82)] sm:block" />
+			<div className="pointer-events-none absolute right-7 top-[8%] hidden h-9 w-32 rounded-full bg-white/75 shadow-[-25px_10px_0_-5px_rgba(255,255,255,0.9),22px_-16px_0_6px_rgba(255,255,255,0.88)] sm:block" />
 			<LeafAccent side="left" />
 			<LeafAccent side="right" />
 
-			<main className="relative z-10 mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-7xl flex-col items-center justify-center">
-				<div className="grid w-full overflow-hidden rounded-3xl bg-white shadow-[0_24px_70px_rgba(25,104,105,0.18)] md:h-180 md:grid-cols-[1.04fr_1fr]">
-					<div className="relative flex min-h-155 flex-col overflow-hidden bg-[linear-gradient(135deg,#fbffff_0%,#effbfa_42%,#dff5f1_100%)] px-6 pt-10 text-center sm:px-10 md:min-h-0 md:px-14 md:pt-14">
-						<div className="pointer-events-none absolute left-[14%] top-[47%] h-5 w-5 rounded-full bg-[#bdeee8]" />
-						<div className="pointer-events-none absolute right-[19%] top-[43%] h-5 w-5 rounded-full bg-[#bdeee8]" />
+			<main className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 flex-col items-center justify-center">
+				<div className="grid w-full overflow-hidden rounded-3xl bg-white shadow-[0_24px_70px_rgba(25,104,105,0.18)] lg:h-[min(45rem,calc(100dvh-6rem))] lg:grid-cols-[1.04fr_1fr]">
+					<div className="relative flex flex-col overflow-hidden bg-[linear-gradient(135deg,#fbffff_0%,#effbfa_42%,#dff5f1_100%)] px-6 pb-2 pt-4 text-center sm:px-10 sm:pb-0 sm:pt-10 lg:min-h-0 lg:px-14 lg:pt-14">
+						<div className="pointer-events-none absolute left-[14%] top-[47%] hidden h-5 w-5 rounded-full bg-[#bdeee8] lg:block" />
+						<div className="pointer-events-none absolute right-[19%] top-[43%] hidden h-5 w-5 rounded-full bg-[#bdeee8] lg:block" />
 						<div className="relative z-10">
-							<div className="flex items-center justify-center gap-4">
+							<div className="flex items-center justify-center gap-3 sm:gap-4">
 								<BrandMark />
-								<h1 className="text-[2.75rem] font-extrabold leading-none tracking-normal text-[#118a82] sm:text-[4rem]">
+								<h1 className="text-4xl font-extrabold leading-none tracking-normal text-[#118a82] sm:text-6xl lg:text-[4rem]">
 									พูดเพลิน
 								</h1>
 							</div>
-							<p className="mt-5 text-[1.25rem] font-medium leading-8 text-[#43505c] sm:text-[1.65rem]">
+							<p className="mt-3 text-lg font-medium leading-7 text-[#43505c] sm:mt-5 sm:text-[1.65rem] sm:leading-8">
 								ฝึกพูดและสื่อสารได้ทุกที่ ทุกเวลา
 							</p>
-							<p className="mt-1 text-[1.05rem] font-bold leading-7 text-[#118a82] sm:text-[1.28rem]">
+							<p className="mt-1 text-base font-bold leading-6 text-[#118a82] sm:text-[1.28rem] sm:leading-7">
 								สำหรับผู้ป่วยหลังโรคหลอดเลือดสมอง
 							</p>
 						</div>
 
-						<div className="relative z-10 mt-auto flex flex-1 items-end justify-center pt-6">
+						<div className="relative z-10 mt-4 hidden flex-1 items-end justify-center pt-6 lg:mt-auto lg:flex">
 							<Image
 								src="/images/branding/login-caregiver-patient.png"
 								alt="ผู้ป่วยสูงอายุกำลังฝึกพูดกับนักแก้ไขการพูด"
 								width={610}
 								height={500}
 								priority
-								className="h-auto max-h-105 w-full max-w-155 object-contain md:max-h-117.5"
+								className="h-auto max-h-105 w-full max-w-155 object-contain lg:max-h-117.5"
 							/>
 						</div>
 
-						<div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-24 bg-[#d9f5ef]" />
-						<div className="pointer-events-none absolute -bottom-10 left-[-10%] z-20 h-36 w-[120%] rounded-[50%] bg-[#f8fffb]" />
-						<div className="pointer-events-none absolute inset-y-0 right-0 hidden w-px bg-[#d9eaea] md:block" />
+						<div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 hidden h-24 bg-[#d9f5ef] lg:block" />
+						<div className="pointer-events-none absolute -bottom-10 left-[-10%] z-20 hidden h-36 w-[120%] rounded-[50%] bg-[#f8fffb] lg:block" />
+						<div className="pointer-events-none absolute inset-y-0 right-0 hidden w-px bg-[#d9eaea] lg:block" />
 					</div>
 
-					<div className="flex min-h-155 items-center justify-center bg-white px-6 py-12 sm:px-10 md:min-h-0 md:px-16">
+					<div className="flex items-center justify-center bg-white px-6 py-6 sm:px-10 sm:py-12 lg:min-h-0 lg:px-16">
 						<div className="w-full max-w-107.5">
 							<div className="text-center">
-								<h2 className="text-[2.35rem] font-extrabold leading-tight tracking-normal text-[#118a82]">
+								<h2 className="text-2xl font-extrabold leading-tight tracking-normal text-[#118a82] sm:text-3xl lg:text-[2.35rem]">
 									{submitButtonLabel}
 								</h2>
-								<p className="mt-3 text-[1.15rem] font-medium leading-7 text-[#4f5865]">
+								<p className="mt-2 text-base font-medium leading-6 text-[#4f5865] sm:mt-3 sm:text-[1.15rem] sm:leading-7">
 									กรอกรหัสเข้าใช้งานตามบทบาทของคุณ
 								</p>
 							</div>
 
-							<form className="mt-14" onSubmit={handleSubmit} noValidate>
+							<form
+								className="mt-4 sm:mt-10 lg:mt-14"
+								onSubmit={handleSubmit}
+								noValidate
+							>
 								<label
-									className="mb-3 block text-[1.08rem] font-bold leading-6 text-[#118a82]"
+									className="mb-2 block text-base font-bold leading-6 text-[#118a82] sm:mb-3 sm:text-[1.08rem]"
 									htmlFor={inputId}
 								>
 									รหัสเข้าใช้งานผู้รับบริการ / Therapist Code
 								</label>
 
-								<div className="flex h-20 items-center gap-4 rounded-xl border border-[#c8d5dc] bg-white px-6 shadow-[0_8px_20px_rgba(39,92,98,0.06)] transition focus-within:border-[#118a82] focus-within:ring-4 focus-within:ring-[#118a82]/15">
+								<div className="flex h-14 items-center gap-3 rounded-xl border border-[#c8d5dc] bg-white px-4 shadow-[0_8px_20px_rgba(39,92,98,0.06)] transition focus-within:border-[#118a82] focus-within:ring-4 focus-within:ring-[#118a82]/15 sm:h-16 sm:gap-4 sm:px-6 lg:h-20">
 									<LockIcon />
 									<input
 										id={inputId}
-										className="h-full min-w-0 flex-1 bg-transparent text-[1.2rem] font-semibold uppercase tracking-normal text-[#173d3f] outline-none placeholder:text-[#8d949d]"
+										className="h-full min-w-0 flex-1 bg-transparent text-base font-semibold uppercase tracking-normal text-[#173d3f] outline-none placeholder:text-[#8d949d] sm:text-[1.2rem]"
 										type="text"
 										name="accessCode"
 										inputMode="text"
@@ -285,32 +286,28 @@ export function LoginForm() {
 									</p>
 								) : null}
 
-								<div className="mt-7 rounded-xl border border-[#b7e0df] bg-[linear-gradient(135deg,#f5ffff_0%,#eefbfa_100%)] px-6 py-5 text-[#37424d] shadow-[0_10px_22px_rgba(39,92,98,0.04)]">
-									<div className="flex items-start gap-4">
+								<div className="mt-4 rounded-xl border border-[#b7e0df] bg-[linear-gradient(135deg,#f5ffff_0%,#eefbfa_100%)] px-4 py-3 text-[#37424d] shadow-[0_10px_22px_rgba(39,92,98,0.04)] sm:mt-7 sm:px-6 sm:py-5">
+									<div className="flex items-start gap-3 sm:gap-4">
 										<InfoIcon />
 										<div>
-											<p className="text-[1.08rem] font-bold text-[#118a82]">
+											<p className="text-base font-bold text-[#118a82] sm:text-[1.08rem]">
 												ตัวอย่างรหัสเข้าใช้งาน
 											</p>
-											<ul className="mt-2 list-disc space-y-1 pl-6 text-[1.05rem] font-medium leading-7">
-												<li>ผู้รับบริการ: เช่น P-967833, P-516550</li>
+											<ul className="mt-1 list-disc space-y-1 pl-6 text-sm font-medium leading-6 sm:mt-2 sm:text-[1.05rem] sm:leading-7">
+												<li>ผู้รับบริการ: เช่น P-715069, P-516550</li>
 												<li>นักแก้ไขการพูด: เช่น TH001</li>
 											</ul>
 										</div>
 									</div>
 								</div>
 
-								<button
-									className="mt-9 flex h-20 w-full items-center justify-center gap-4 rounded-xl bg-[linear-gradient(180deg,#139f94_0%,#0d847b_100%)] px-6 text-[1.45rem] font-bold text-white shadow-[0_16px_30px_rgba(17,138,130,0.28)] outline-none transition hover:shadow-[0_20px_38px_rgba(17,138,130,0.32)] focus:ring-4 focus:ring-[#118a82]/25 disabled:cursor-not-allowed disabled:opacity-70 disabled:shadow-none"
-									type="submit"
-									disabled={isSubmitting}
-								>
+								<button className="mt-5 flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-[linear-gradient(180deg,#139f94_0%,#0d847b_100%)] px-6 text-lg font-bold text-white shadow-[0_16px_30px_rgba(17,138,130,0.28)] outline-none transition hover:shadow-[0_20px_38px_rgba(17,138,130,0.32)] focus:ring-4 focus:ring-[#118a82]/25 disabled:cursor-not-allowed disabled:opacity-70 disabled:shadow-none sm:mt-8 sm:h-16 sm:gap-4 sm:text-[1.45rem] lg:mt-9 lg:h-20">
 									<LoginIcon />
 									เข้าสู่ระบบ
 								</button>
 							</form>
 
-							<div className="mt-16 flex items-center justify-center gap-3 text-center text-[0.98rem] font-medium leading-6 text-[#7b848d]">
+							<div className="mt-5 flex items-center justify-center gap-3 text-center text-[0.9rem] font-medium leading-6 text-[#7b848d] sm:mt-10 sm:text-[0.98rem] lg:mt-16">
 								<ShieldIcon />
 								<span>ข้อมูลของคุณจะถูกเก็บรักษาเป็นความลับ</span>
 							</div>
@@ -318,7 +315,7 @@ export function LoginForm() {
 					</div>
 				</div>
 
-				<p className="mt-6 text-center text-[0.95rem] font-medium leading-5 text-[#4e6269]">
+				<p className="mt-3 text-center text-[0.9rem] font-medium leading-5 text-[#4e6269] sm:mt-6 sm:text-[0.95rem]">
 					PoodPlearn © 2026&nbsp;&nbsp;|&nbsp;&nbsp;NSC 2026
 				</p>
 			</main>

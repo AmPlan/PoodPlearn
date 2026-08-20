@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import type {
   PatientProfile,
   TherapistPatientDetail as TherapistPatientDetailData,
@@ -12,6 +11,7 @@ import type {
 } from "../types/therapistClinical.types";
 import TherapistPatientActions from "./TherapistPatientActions";
 import TherapistPatientDetailClient from "./TherapistPatientDetailClient";
+import PatientCodeCopyButton from "./PatientCodeCopyButton";
 
 type TherapistPatientDetailProps = {
   categoryScores: CategoryScore[];
@@ -61,18 +61,7 @@ export function TherapistPatientDetail({
   patient,
   progressBySession,
 }: TherapistPatientDetailProps) {
-  const [copyStatus, setCopyStatus] = useState("");
   const profile = getSafePatientProfile(patient);
-
-
-  async function handleCopyPatientCode() {
-    if (typeof navigator === "undefined" || !navigator.clipboard) {
-      return;
-    }
-
-    await navigator.clipboard.writeText(profile.patientCode);
-    setCopyStatus("คัดลอกรหัสแล้ว");
-  }
 
   return (
     <main className="min-h-dvh overflow-x-clip bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-3 py-3 text-[#123232] sm:px-5">
@@ -87,13 +76,9 @@ export function TherapistPatientDetail({
                 >
                   กลับรายชื่อ
                 </Link>
-                <button
-                  type="button"
-                  className="no-print inline-flex min-h-[38px] items-center justify-center rounded-full bg-[#F2FBFB] px-4 text-sm font-bold text-[#13756F] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF]"
-                  onClick={handleCopyPatientCode}
-                >
-                  {copyStatus || `Patient Code ${profile.patientCode}`}
-                </button>
+                <div className="no-print">
+                  <PatientCodeCopyButton patientCode={profile.patientCode} />
+                </div>
               </div>
               <h1 className="mt-3 text-[clamp(1.75rem,2.7vw,2.45rem)] font-bold leading-tight">
                 {profile.firstName + " " + profile.lastName}

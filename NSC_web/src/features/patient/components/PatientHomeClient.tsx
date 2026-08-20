@@ -19,19 +19,19 @@ import type {
 function WeekStreak({ days }: { days: WeekStreakDay[] }) {
 	return (
 		<div
-			className="flex items-center justify-between gap-1.5 rounded-3xl bg-[#F3FBFB] px-4 py-4"
+			className="flex items-center justify-between gap-1 rounded-3xl bg-[#F3FBFB] px-2 py-3 sm:gap-1.5 sm:px-4 sm:py-4"
 			role="list"
 			aria-label="การฝึก 7 วันล่าสุด"
 		>
 			{days.map((day, index) => (
 				<div
 					key={`${day.label}-${index}`}
-					className="flex flex-col items-center gap-2.5"
+					className="flex flex-1 flex-col items-center gap-1.5 sm:gap-2.5"
 					role="listitem"
 				>
 					<span
 						className={
-							"text-sm font-bold sm:text-base " +
+							"text-xs font-bold sm:text-sm md:text-base " +
 							(day.isToday ? "text-[#178F84]" : "text-[#7A9A9C]")
 						}
 					>
@@ -39,7 +39,7 @@ function WeekStreak({ days }: { days: WeekStreakDay[] }) {
 					</span>
 					<span
 						className={
-							"flex h-12 w-12 items-center justify-center rounded-full text-base font-bold sm:h-14 sm:w-14 sm:text-lg " +
+							"flex aspect-square w-full max-w-11 items-center justify-center rounded-full text-sm font-bold sm:max-w-13 sm:text-base md:max-w-14 md:text-lg " +
 							(day.score !== null
 								? "bg-[#18867d] text-white"
 								: day.isToday
@@ -50,7 +50,7 @@ function WeekStreak({ days }: { days: WeekStreakDay[] }) {
 						{day.score !== null ? (
 							<svg
 								aria-hidden="true"
-								className="h-6 w-6 sm:h-7 sm:w-7"
+								className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7"
 								fill="none"
 								stroke="currentColor"
 								strokeWidth={3}
@@ -95,7 +95,7 @@ export function PatientHomeClient() {
 		buttonText: "",
 	});
 	const [errorMessage, setErrorMessage] = useState("");
-	const [micError, setMicError] = useState(""); // <-- New state for microphone permission error
+	const [micError, setMicError] = useState("");
 	const [isLoading, setIsLoading] = useState(true);
 	const [isFinished, setIsFinished] = useState(false);
 	const [showStartToast, setShowStartToast] = useState(false);
@@ -180,11 +180,11 @@ export function PatientHomeClient() {
 				}
 				case "needs_standard_assessment":
 					setHomeAction({
-						eyebrow: "แบบทดสอบก่อนใช้งาน",
-						title: "ทำแบบทดสอบก่อนใช้งาน",
-						description: "เริ่มต้นด้วยแบบทดสอบเพื่อให้ระบบวางแผนการฝึกที่เหมาะกับคุณ",
+						eyebrow: "วางแผนการฝึกที่เหมาะกับคุณ!",
+						title: "แบบทดสอบวัดระดับ",
+						description: "เพื่อแผนฝึกที่พอดีกับท่าน",
 						progressPercent: 0,
-						buttonText: "เริ่มทำแบบทดสอบ",
+						buttonText: "เริ่มกันเลย!",
 					});
 					break;
 				case "finished_daily_training_plan":
@@ -216,21 +216,17 @@ export function PatientHomeClient() {
 			return;
 		}
 
-		// --- MICROPHONE PERMISSION CHECK ---
 		setMicError("");
 		try {
-			// This will prompt the user if permission hasn't been granted yet
 			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-			// Stop the tracks immediately to free up the hardware
 			stream.getTracks().forEach((track) => track.stop());
 		} catch (error) {
 			console.error("Microphone permission denied:", error);
 			setMicError(
 				"ไม่สามารถเข้าถึงไมโครโฟนได้ กรุณาอนุญาตการใช้งานไมโครโฟนในเบราว์เซอร์เพื่อเริ่มต้น",
 			);
-			return; // Prevent navigating if permission is denied
+			return;
 		}
-		// -----------------------------------
 
 		const authSession = getAuthSession();
 		if (!authSession || authSession.role !== "patient") {
@@ -285,12 +281,11 @@ export function PatientHomeClient() {
 	}
 
 	return (
-		<main className="min-h-dvh bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-5 py-6 text-[#123232] sm:px-8 sm:py-7">
-			<div className="mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-260 flex-col sm:min-h-[calc(100dvh-3.5rem)]">
-				{/* UX Fix: Moved the logout button to the top right to match standard mental models */}
+		<main className="min-h-dvh bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-4 py-5 text-[#123232] sm:px-8 sm:py-7">
+			<div className="mx-auto flex min-h-[calc(100dvh-2.5rem)] w-full max-w-260 flex-col sm:min-h-[calc(100dvh-3.5rem)]">
 				<header className="flex justify-end">
 					<button
-						className="min-h-14 rounded-full border border-[#C8E9EA] bg-white px-7 text-lg font-semibold text-[#1A7F78] outline-none transition hover:bg-[#F5FEFF] focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98]"
+						className="min-h-11 rounded-full border border-[#C8E9EA] bg-white px-5 text-base font-semibold text-[#1A7F78] outline-none transition hover:bg-[#F5FEFF] focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98] sm:min-h-14 sm:px-7 sm:text-lg"
 						type="button"
 						onClick={handleLogout}
 					>
@@ -298,36 +293,36 @@ export function PatientHomeClient() {
 					</button>
 				</header>
 
-				<section className="flex flex-1 items-center justify-center">
+				<section className="flex flex-1 items-center justify-center py-6">
 					{isLoading ? (
-						<p className="text-center text-2xl font-bold text-[#45686A] sm:text-3xl">
+						<p className="text-center text-xl font-bold text-[#45686A] sm:text-2xl md:text-3xl">
 							กำลังโหลดข้อมูล...
 						</p>
 					) : errorMessage || !homeData ? (
-						<div className="mx-auto w-full max-w-230 rounded-[28px] border border-[#F3D0D0] bg-white px-7 py-8 text-center shadow-[0_18px_45px_rgba(24,112,108,0.08)] sm:px-9">
-							<p className="text-2xl font-bold text-[#B42318] sm:text-3xl">
+						<div className="mx-auto w-full max-w-230 rounded-3xl border border-[#F3D0D0] bg-white px-5 py-7 text-center shadow-[0_18px_45px_rgba(24,112,108,0.08)] sm:px-9 sm:py-8">
+							<p className="text-xl font-bold text-[#B42318] sm:text-2xl md:text-3xl">
 								{errorMessage || "ไม่พบข้อมูลผู้รับบริการ"}
 							</p>
 						</div>
 					) : (
 						<div className="mx-auto w-full max-w-230">
-							<h1 className="mb-8 text-center text-3xl font-bold leading-tight sm:text-4xl text-[#123232]">
+							<h1 className="mb-6 text-balance text-center text-2xl font-bold leading-tight text-[#123232] sm:mb-8 sm:text-3xl md:text-4xl">
 								สวัสดีค่ะ คุณ{homeData.patient.name}
 							</h1>
 
 							{isFinished ? (
-								<article className="rounded-[34px] border border-[#C8E9EA] bg-white px-7 py-10 text-center shadow-[0_22px_55px_rgba(24,112,108,0.1)] sm:px-10 sm:py-12">
-									<div className="mb-10 border-b border-[#E3F3F4] pb-8">
-										<p className="mb-4 text-lg font-bold sm:text-3xl">
+								<article className="rounded-3xl border border-[#C8E9EA] bg-white px-5 py-8 text-center shadow-[0_22px_55px_rgba(24,112,108,0.1)] sm:px-10 sm:py-12">
+									<div className="mb-8 border-b border-[#E3F3F4] pb-6 sm:mb-10 sm:pb-8">
+										<p className="mb-4 text-base font-bold sm:text-2xl md:text-3xl">
 											ผลงานของท่าน 7 วันที่ผ่านมา
 										</p>
 										<WeekStreak days={homeData.weekStreak} />
 									</div>
 
-									<div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#DDF2F3] sm:h-24 sm:w-24">
+									<div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#DDF2F3] sm:h-24 sm:w-24">
 										<svg
 											aria-hidden="true"
-											className="h-10 w-10 text-[#1FA89C] sm:h-12 sm:w-12"
+											className="h-8 w-8 text-[#1FA89C] sm:h-12 sm:w-12"
 											fill="none"
 											stroke="currentColor"
 											strokeWidth={3}
@@ -341,34 +336,38 @@ export function PatientHomeClient() {
 										</svg>
 									</div>
 
-									<h2 className="mt-6 text-3xl font-bold leading-tight text-[#1A7F78] sm:text-4xl">
+									<h2 className="mt-5 text-balance text-2xl font-bold leading-tight text-[#1A7F78] sm:mt-6 sm:text-3xl md:text-4xl">
 										วันนี้เก่งมากเลยค่ะ ทำครบหมดแล้ว!
 									</h2>
-									<p className="mt-4 text-xl font-medium leading-relaxed text-[#4E6D70] sm:text-2xl">
+									<p className="mt-3 text-pretty text-lg font-medium leading-relaxed text-[#4E6D70] sm:mt-4 sm:text-xl md:text-2xl">
 										พักผ่อนเยอะๆ นะคะ แล้วพรุ่งนี้เจอกันค่ะ
 									</p>
 								</article>
 							) : (
-								<article className="rounded-[34px] border border-[#C8E9EA] bg-white px-7 py-8 shadow-[0_22px_55px_rgba(24,112,108,0.1)] sm:px-10 sm:py-5">
+								<article className="rounded-3xl border border-[#C8E9EA] bg-white px-5 py-7 shadow-[0_22px_55px_rgba(24,112,108,0.1)] sm:px-10 sm:py-6">
 									{homeAction.eyebrow ? (
-										<p className="text-lg font-bold text-[#1FA89C] pb-3">
+										<p className="pb-2 text-base font-bold text-[#1FA89C] sm:pb-3 sm:text-lg">
 											{homeAction.eyebrow}
 										</p>
 									) : null}
 
-									<h2 className="mt-2 text-3xl font-bold leading-tight">
+									<h2 className="mt-1 text-2xl font-bold leading-tight sm:mt-2 sm:text-3xl">
 										{homeAction.title}
 									</h2>
-									<p className="mt-3 text-xl font-medium leading-relaxed pl-3 whitespace-pre-wrap">
-										{todayPlans?.flatMap((val, i) =>
-											i === 0 ? [val] : [<br key={i + 0.5} />, val],
-										)}
+
+									{/* MODIFIED: Renders description if it exists, else renders today's plans */}
+									<p className="mt-3 whitespace-pre-wrap pl-2 text-lg font-medium leading-relaxed sm:pl-3 sm:text-xl">
+										{homeAction.description
+											? homeAction.description
+											: todayPlans?.flatMap((val, i) =>
+													i === 0 ? [val] : [<br key={i + 0.5} />, val],
+												)}
 									</p>
 
-									<div className="relative mt-10">
+									<div className="relative mt-8 sm:mt-10">
 										{showStartToast ? (
 											<p
-												className="pointer-events-none absolute -top-16 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#123232] px-6 py-3 text-lg font-semibold text-white shadow-[0_14px_30px_rgba(18,50,50,0.16)]"
+												className="pointer-events-none absolute -top-14 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#123232] px-5 py-2.5 text-base font-semibold text-white shadow-[0_14px_30px_rgba(18,50,50,0.16)] sm:-top-16 sm:px-6 sm:py-3 sm:text-lg"
 												role="status"
 											>
 												เริ่มกันเลย!
@@ -376,7 +375,7 @@ export function PatientHomeClient() {
 										) : null}
 
 										<Link
-											className="flex min-h-18 w-full items-center justify-center rounded-3xl bg-[#1FA89C] px-7 py-5 text-center text-xl font-bold text-white shadow-[0_16px_34px_rgba(31,168,156,0.24)] outline-none transition duration-150 hover:bg-[#178F84] hover:shadow-[0_18px_38px_rgba(31,168,156,0.3)] focus:ring-4 focus:ring-[#1FA89C]/30 active:scale-[0.98] active:bg-[#13786F] sm:text-2xl"
+											className="flex min-h-16 w-full items-center justify-center rounded-3xl bg-[#1FA89C] px-6 py-4 text-center text-lg font-bold text-white shadow-[0_16px_34px_rgba(31,168,156,0.24)] outline-none transition duration-150 hover:bg-[#178F84] hover:shadow-[0_18px_38px_rgba(31,168,156,0.3)] focus:ring-4 focus:ring-[#1FA89C]/30 active:scale-[0.98] active:bg-[#13786F] sm:min-h-18 sm:px-7 sm:py-5 sm:text-xl md:text-2xl"
 											href={homeData.nextAction.targetPath}
 											onClick={handlePrimaryActionClick}
 											aria-disabled={isStartingAction}
@@ -384,19 +383,21 @@ export function PatientHomeClient() {
 											{homeAction.buttonText}
 										</Link>
 
-										{/* Error rendering block for Microphone Permission */}
 										{micError && (
-											<p className="mt-4 text-center text-lg font-semibold text-[#B42318]">
+											<p className="mt-4 text-center text-base font-semibold text-[#B42318] sm:text-lg">
 												{micError}
 											</p>
 										)}
 									</div>
-									<div className="border-t border-[#E3F3F4] pt-4 mt-8">
-										<p className="mb-4 text-3xl font-bold">
-											ผลงานของท่าน 7 วันที่ผ่านมา
-										</p>
-										<WeekStreak days={homeData.weekStreak} />
-									</div>
+
+									{homeData.nextAction.type !== "needs_standard_assessment" && (
+										<div className="mt-6 border-t border-[#E3F3F4] pt-4 sm:mt-8">
+											<p className="mb-3 text-xl font-bold sm:mb-4 sm:text-2xl md:text-3xl">
+												ผลงานของท่าน 7 วันที่ผ่านมา
+											</p>
+											<WeekStreak days={homeData.weekStreak} />
+										</div>
+									)}
 								</article>
 							)}
 						</div>

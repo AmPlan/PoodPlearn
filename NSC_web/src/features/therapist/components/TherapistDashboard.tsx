@@ -2,6 +2,7 @@
 import Link from "next/link";
 import React, { useMemo, useState } from "react";
 import type { TherapistDashboardData } from "../types/therapist.types";
+import PatientCodeCopyButton from "./PatientCodeCopyButton";
 
 type TherapistDashboardProps = {
 	data: TherapistDashboardData;
@@ -123,9 +124,7 @@ export function TherapistDashboard({ data }: TherapistDashboardProps) {
 										<div>
 											<div className="flex flex-wrap items-center gap-2">
 												<h3 className="text-2xl font-bold">{patient.name}</h3>
-												<span className="rounded-full bg-[#E2F3F3] px-3 py-1 text-sm font-bold text-[#0D625E] ring-1 ring-[#B7DFE0]">
-													{patient.code}
-												</span>
+												<PatientCodeCopyButton patientCode={patient.code} />
 												{patient.needsFollowUp ? (
 													<span className="rounded-full bg-[#FFF0E8] px-3 py-1 text-sm font-bold text-[#A65312]">
 														ควรติดตาม
