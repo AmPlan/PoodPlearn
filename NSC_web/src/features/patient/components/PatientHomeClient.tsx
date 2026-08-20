@@ -11,7 +11,10 @@ import {
 import { createNamingSession } from "@/features/training/services/pn002NamingService";
 import { getTodayTrainingPlan } from "@/features/training/services/trainingPlanService";
 import { getPatientHomeData } from "../services/patientHomeService";
-import type { PatientHomeData, WeekStreakDay } from "../types/patientHome.types";
+import type {
+	PatientHomeData,
+	WeekStreakDay,
+} from "../types/patientHome.types";
 
 function WeekStreak({ days }: { days: WeekStreakDay[] }) {
 	return (
@@ -69,7 +72,13 @@ function WeekStreak({ days }: { days: WeekStreakDay[] }) {
 	);
 }
 
-function PlanElement({ text, isFinished}: { text: string; isFinished: boolean }) {
+function PlanElement({
+	text,
+	isFinished,
+}: {
+	text: string;
+	isFinished: boolean;
+}) {
 	const className = isFinished ? "line-through text-gray-400" : "";
 
 	return <span className={className}>{text}</span>;
@@ -86,6 +95,7 @@ export function PatientHomeClient() {
 		buttonText: "",
 	});
 	const [errorMessage, setErrorMessage] = useState("");
+	const [micError, setMicError] = useState(""); // <-- New state for microphone permission error
 	const [isLoading, setIsLoading] = useState(true);
 	const [isFinished, setIsFinished] = useState(false);
 	const [showStartToast, setShowStartToast] = useState(false);
@@ -123,20 +133,22 @@ export function PatientHomeClient() {
 			switch (result.data.nextAction.type) {
 				case "has_daily_training_plan": {
 					const todayPlanResult = await getTodayTrainingPlan(Number(patientId));
-					const todayPlanData = [...(todayPlanResult.data ?? [])].sort((a, b) => {
-						if (a.status === "PENDING" && b.status !== "PENDING") return -1;
-						if (a.status !== "PENDING" && b.status === "PENDING") return 1;
-						return 0;
-					});
-					
+					const todayPlanData = [...(todayPlanResult.data ?? [])].sort(
+						(a, b) => {
+							if (a.status === "PENDING" && b.status !== "PENDING") return -1;
+							if (a.status !== "PENDING" && b.status === "PENDING") return 1;
+							return 0;
+						},
+					);
+
 					const planList: JSX.Element[] = [];
-					
+
 					let currentPlan;
 
 					if (todayPlanData.length > 0) {
 						for (let i: number = 0; i < todayPlanData.length; i++) {
 							const planEntry = todayPlanData[i];
-							const text = (i+1) + ". " + planEntry.moduleName;
+							const text = i + 1 + ". " + planEntry.moduleName;
 							planList.push(
 								<PlanElement
 									text={text}
@@ -144,7 +156,7 @@ export function PatientHomeClient() {
 									key={i}
 								/>,
 							);
-							
+
 							if (planEntry.status === "PENDING" && !currentPlan) {
 								currentPlan = planEntry;
 							}
@@ -156,7 +168,7 @@ export function PatientHomeClient() {
 					}
 
 					setTodayPlans(planList);
-					
+
 					setHomeAction({
 						eyebrow: "มาเริ่มฝึกกันเถอะ!",
 						title: "กิจกรรมวันนี้",
@@ -195,12 +207,30 @@ export function PatientHomeClient() {
 		router.push("/");
 	}
 
-	async function handlePrimaryActionClick(event: MouseEvent<HTMLAnchorElement>) {
+	async function handlePrimaryActionClick(
+		event: MouseEvent<HTMLAnchorElement>,
+	) {
 		event.preventDefault();
 
 		if (!homeData || isStartingAction) {
 			return;
 		}
+
+		// --- MICROPHONE PERMISSION CHECK ---
+		setMicError("");
+		try {
+			// This will prompt the user if permission hasn't been granted yet
+			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+			// Stop the tracks immediately to free up the hardware
+			stream.getTracks().forEach((track) => track.stop());
+		} catch (error) {
+			console.error("Microphone permission denied:", error);
+			setMicError(
+				"ไม่สามารถเข้าถึงไมโครโฟนได้ กรุณาอนุญาตการใช้งานไมโครโฟนในเบราว์เซอร์เพื่อเริ่มต้น",
+			);
+			return; // Prevent navigating if permission is denied
+		}
+		// -----------------------------------
 
 		const authSession = getAuthSession();
 		if (!authSession || authSession.role !== "patient") {
@@ -218,7 +248,10 @@ export function PatientHomeClient() {
 
 		if (assignedSetId) {
 			if (typeof window !== "undefined") {
-				window.sessionStorage.setItem("dailyPlanScheduleId", dailyPlanScheduleId);
+				window.sessionStorage.setItem(
+					"dailyPlanScheduleId",
+					dailyPlanScheduleId,
+				);
 			}
 
 			setShowStartToast(true);
@@ -350,6 +383,13 @@ export function PatientHomeClient() {
 										>
 											{homeAction.buttonText}
 										</Link>
+
+										{/* Error rendering block for Microphone Permission */}
+										{micError && (
+											<p className="mt-4 text-center text-lg font-semibold text-[#B42318]">
+												{micError}
+											</p>
+										)}
 									</div>
 									<div className="border-t border-[#E3F3F4] pt-4 mt-8">
 										<p className="mb-4 text-3xl font-bold">

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import type { TherapistPatientSummary } from "../types/therapist.types";
 import {
   deletePatient,
@@ -28,6 +28,19 @@ export default function TherapistPatientList({ patients }: TherapistPatientListP
   const router = useRouter();
   const [visiblePatients, setVisiblePatients] = useState(patients);
   const [copiedPatientId, setCopiedPatientId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const displayedPatients = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return visiblePatients.filter((p) => {
+      if (statusFilter === "followUp" && !p.needsFollowUp) return false;
+      if (!term) return true;
+      return (
+        (p.name && p.name.toLowerCase().includes(term)) ||
+        (p.code && p.code.toLowerCase().includes(term))
+      );
+    });
+  }, [visiblePatients, searchTerm, statusFilter]);
 
   useEffect(() => {
     let isActive = true;
@@ -75,7 +88,26 @@ export default function TherapistPatientList({ patients }: TherapistPatientListP
 
   return (
     <div className="grid gap-4">
-      {visiblePatients.map((patient) => (
+      <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="ค้นหาชื่อหรือรหัส"
+            className="rounded-lg border border-[#D7EFF0] bg-white px-3 py-2 text-sm shadow-sm focus:outline-none"
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-lg border border-[#D7EFF0] bg-white px-3 py-2 text-sm"
+          >
+            <option value="all">ทั้งหมด</option>
+            <option value="followUp">ควรติดตาม</option>
+          </select>
+        </div>
+      </div>
+      {displayedPatients.map((patient) => (
         <div
           key={patient.id}
           className="rounded-[30px] bg-white px-6 py-5 shadow-[0_16px_36px_rgba(17,103,99,0.09)] ring-1 ring-[#CDEEEF]"
@@ -100,7 +132,7 @@ export default function TherapistPatientList({ patients }: TherapistPatientListP
             <div className="flex flex-wrap gap-3 sm:justify-end">
               <Link
                 href={`/therapist/patients/${patient.id}`}
-                className="inline-flex min-h-[50px] items-center justify-center rounded-full bg-[#1FA89C] px-5 text-base font-bold text-white shadow-[0_10px_24px_rgba(31,168,156,0.22)] hover:bg-[#178F84]"
+                className="inline-flex min-h-[50px] items-center justify-center rounded-full border border-[#D7EFF0] bg-white px-5 text-base font-bold text-[#13756F] hover:bg-[#F7FFFF]"
               >
                 ดูรายละเอียด
               </Link>

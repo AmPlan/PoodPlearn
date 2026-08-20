@@ -147,7 +147,7 @@ export async function GET(req: NextRequest) {
 
 		let nextAction = {
 			type: "needs_standard_assessment",
-			targetPath: "/patient/assessment/start",
+			targetPath: "/patient/assessment/session",
 		};
 
 		if (hasFinishedAssessment) {
