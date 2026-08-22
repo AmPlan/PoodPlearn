@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { NextRequest, NextResponse } from 'next/server';
 
 import { AUTH_COOKIE_NAME, verifySession } from '@/lib/auth';
 import { keepLatestItemsByQuestionId } from '@/lib/latestItemResults';
@@ -9,7 +9,7 @@ type CompleteSessionContext = {
   params: { id: string } | Promise<{ id: string }>;
 };
 
-export async function POST(_req: NextRequest, context: CompleteSessionContext) {
+export async function POST(req: NextRequest, context: CompleteSessionContext) {
   try {
     const cookieStore = await cookies();
     const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
@@ -20,9 +20,22 @@ export async function POST(_req: NextRequest, context: CompleteSessionContext) {
 
     const params = await context.params;
     const sessionId = Number(params.id);
+    const body = (await req.json().catch(() => ({}))) as {
+      dailyPlanScheduleId?: number;
+    };
 
     if (!Number.isInteger(sessionId) || sessionId <= 0) {
       return NextResponse.json({ error: 'Invalid session ID.' }, { status: 400 });
+    }
+
+    if (
+      body.dailyPlanScheduleId !== undefined &&
+      (!Number.isInteger(body.dailyPlanScheduleId) || body.dailyPlanScheduleId <= 0)
+    ) {
+      return NextResponse.json(
+        { error: 'dailyPlanScheduleId must be a positive integer.' },
+        { status: 400 }
+      );
     }
 
     const sessionResult = await prisma.sessionResult.findUnique({
@@ -90,7 +103,7 @@ export async function POST(_req: NextRequest, context: CompleteSessionContext) {
     );
 
     const result = await prisma.$transaction(async (tx) => {
-      const updatedCategories: any = [];
+      const updatedCategories: Array<{ sessionCategoryId: number }> = [];
 
       for (const cat of existingCategories) {
         const items = latestItemsWithTrainingSets.filter((item) =>
@@ -117,15 +130,18 @@ export async function POST(_req: NextRequest, context: CompleteSessionContext) {
         updatedCategories.push(updated);
       }
 
-      await tx.dailyPlanSchedule.updateMany({
-        where: {
-          sessionId,
-          patientId: sessionResult.patientId,
-        },
-        data: {
-          status: 'COMPLETED',
-        },
-      });
+      if (body.dailyPlanScheduleId) {
+        await tx.dailyPlanSchedule.update({
+          where: {
+            dailyPlanScheduleId: body.dailyPlanScheduleId,
+            patientId: sessionResult.patientId,
+          },
+          data: {
+            status: 'COMPLETED',
+            sessionId,
+          },
+        });
+      }
 
       let progressTracking = await tx.progressTracking.findFirst({
         where: { patientId: sessionResult.patientId },

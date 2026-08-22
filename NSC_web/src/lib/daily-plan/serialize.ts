@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma, Prisma } from '@/lib/prisma';
 
 import { getQuestionDetail } from './question-detail';
 
@@ -7,17 +7,45 @@ import { getQuestionDetail } from './question-detail';
  * category/difficulty pair, and flattens everything into one API-friendly object.
  */
 
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-export  async function buildEnrichedSchedule(schedule: any) {
-  const trainingSets = await prisma.trainingSet.findMany({
-    where: {
-      categoryId: schedule.trainingPlan.categoryId,
-      difficultyId: schedule.trainingPlan.difficultyId,
-      deletedAt: null,
-    },
-  });
+type DailyPlanScheduleWithRelations = Prisma.DailyPlanScheduleGetPayload<{
+  include: {
+    trainingPlan: {
+      include: {
+        trainingSet: {
+          include: {
+            category: true;
+            difficultyLevel: true;
+          };
+        };
+      };
+    };
+    sessionResult: {
+      include: {
+        sessionCategoryResult: {
+          include: {
+            trainingSet: true;
+          };
+        };
+      };
+    };
+  };
+}>;
 
-  const setIds = trainingSets.map((ts) => ts.setId);
+export async function buildEnrichedSchedule(schedule: DailyPlanScheduleWithRelations) {
+  const trainingSetId = schedule.trainingPlan.trainingSetId;
+  const trainingSet =
+    schedule.trainingPlan.trainingSet ??
+    (await prisma.trainingSet.findUnique({
+      where: { setId: trainingSetId },
+      include: { category: true, difficultyLevel: true },
+    }));
+
+  if (!trainingSet) {
+    throw new Error('Unable to resolve training set for scheduled plan.');
+  }
+
+  const trainingSets = [trainingSet];
+  const setIds = [trainingSet.setId];
 
   const setQuestions = await prisma.trainingSetQuestion.findMany({
     where: { setId: { in: setIds } },
@@ -44,8 +72,12 @@ export  async function buildEnrichedSchedule(schedule: any) {
     trainingPlan: {
       trainingPlanId: schedule.trainingPlan.trainingPlanId,
       planRole: schedule.trainingPlan.planRole,
-      category: schedule.trainingPlan.category,
-      difficultyLevel: schedule.trainingPlan.difficultyLevel,
+      trainingSet: {
+        setId: trainingSet.setId,
+        title: trainingSet.title,
+        category: trainingSet.category,
+        difficultyLevel: trainingSet.difficultyLevel,
+      },
     },
     sessionResult: schedule.sessionResult,
     trainingSets: trainingSets.map((ts) => ({ setId: ts.setId, title: ts.title })),

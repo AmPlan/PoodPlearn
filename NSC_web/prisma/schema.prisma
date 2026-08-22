@@ -121,7 +121,6 @@ model Category {
 
   trainingSets             TrainingSet[]
   assessmentCategoryResults AssessmentCategoryResult[]
-  trainingPlans             TrainingPlan[]
   progressCategories        ProgressCategory[]
 
   @@map("Categories")
@@ -134,7 +133,6 @@ model DifficultyLevel {
 
   trainingSets             TrainingSet[]
   assessmentCategoryResults AssessmentCategoryResult[]
-  trainingPlans             TrainingPlan[]
   questions                 Question[] // <-- NEW: Reverse relation
 
   @@map("Difficulty_Levels")
@@ -152,6 +150,7 @@ model TrainingSet {
 
   category        Category        @relation(fields: [categoryId], references: [categoryId], onDelete: NoAction, onUpdate: NoAction)
   difficultyLevel DifficultyLevel @relation(fields: [difficultyId], references: [difficultyId], onDelete: NoAction, onUpdate: NoAction)
+  trainingPlans   TrainingPlan[]
 
   sessionCategoryResults SessionCategoryResult[]
   setQuestions           TrainingSetQuestion[]
@@ -384,17 +383,15 @@ model AssessmentCategoryResult {
 // ==========================================
 
 model TrainingPlan {
-  trainingPlanId Int      @id @default(autoincrement()) @map("training_plan_id")
-  patientId      Int      @map("patient_id")
-  categoryId     Int      @map("category_id")
-  difficultyId   Int      @map("difficulty_id")
+  trainingPlanId Int       @id @default(autoincrement()) @map("training_plan_id")
+  patientId      Int       @map("patient_id")
+  trainingSetId  Int       @map("training_set_id")
   planRole       PlanRole // <-- Updated to Enum
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  patient         Patient         @relation(fields: [patientId], references: [patientId], onDelete: NoAction, onUpdate: NoAction)
-  category        Category        @relation(fields: [categoryId], references: [categoryId], onDelete: NoAction, onUpdate: NoAction)
-  difficultyLevel DifficultyLevel @relation(fields: [difficultyId], references: [difficultyId], onDelete: NoAction, onUpdate: NoAction)
+  patient     Patient     @relation(fields: [patientId], references: [patientId], onDelete: NoAction, onUpdate: NoAction)
+  trainingSet TrainingSet @relation(fields: [trainingSetId], references: [setId], onDelete: NoAction, onUpdate: NoAction)
 
   dailyPlanSchedules DailyPlanSchedule[]
 

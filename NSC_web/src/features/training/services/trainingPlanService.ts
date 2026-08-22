@@ -1,51 +1,103 @@
-import { createMockNamingSession } from "./pn002NamingService";
 import type {
-  TodayTrainingPlan,
-  TrainingPlanServiceResult,
+	TodayTrainingPlan,
+	TrainingPlanServiceResult,
 } from "../types/trainingPlan.types";
+import { formatLocalDate } from "@/lib/daily-plan/date-utils";
 
-const MOCK_API_DELAY_MS = 180;
-
-async function waitForMockApi() {
-  await new Promise((resolve) => setTimeout(resolve, MOCK_API_DELAY_MS));
-}
+const DAILY_PLAN_API_BASE = "/api/v1/patients";
 
 function createSuccess<T>(data: T): TrainingPlanServiceResult<T> {
-  return { success: true, data };
+	return { success: true, data };
 }
 
 function createFailure<T>(errorMessage: string): TrainingPlanServiceResult<T> {
-  return { success: false, errorMessage };
+	return { success: false, errorMessage };
 }
 
+type DailyPlanApiScheduleEntry = {
+	scheduledDate: string;
+	planRole: string;
+	trainingPlan: {
+		trainingPlanTitle: string;
+		trainingPlanId: number;
+		trainingSetId: number;
+	};
+	dailyPlanSchedule: {
+		dailyPlanScheduleId: number;
+		status: "PENDING" | "IN_REVIEW" | "COMPLETED" | "SKIPPED" | "EXPIRED";
+	};
+};
+
+type DailyPlanApiPayload = {
+	category: {
+		categoryId: number;
+		categoryName: string;
+	};
+	difficultyId: number | null;
+	existingScheduleCount?: number;
+	generatedScheduleCount?: number;
+	existingSchedules?: DailyPlanApiScheduleEntry[];
+	generatedSchedules?: DailyPlanApiScheduleEntry[];
+};
+
 export async function getTodayTrainingPlan(
-  patientId: number,
-): Promise<TrainingPlanServiceResult<TodayTrainingPlan>> {
-  await waitForMockApi();
+	patientId: number,
+): Promise<TrainingPlanServiceResult<TodayTrainingPlan[]>> {
+	if (!patientId) {
+		return createFailure("ไม่พบข้อมูลผู้ป่วย");
+	}
 
-  if (!patientId) {
-    return createFailure("ไม่พบข้อมูลผู้ป่วย");
-  }
+	const date = formatLocalDate(new Date());
+	const url = `${DAILY_PLAN_API_BASE}/${patientId}/daily-plans?date=${date}`;
 
-  const assignedSetId = "1" as const;
-  const sessionResult = await createMockNamingSession(assignedSetId, patientId);
+	try {
+		const response = await fetch(url, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			cache: "no-store",
+		});
 
-  if (!sessionResult.success) {
-    return createFailure(sessionResult.errorMessage);
-  }
+		if (!response.ok) {
+			const errorBody = await response.json().catch(() => null);
+			const errorMessage = errorBody?.error || "ไม่สามารถโหลดแบบฝึกวันนี้ได้";
+			return createFailure(errorMessage);
+		}
 
-  return createSuccess({
-    patientId,
-    planId: `plan-${patientId}-${Date.now()}`,
-    sourceAssessmentId: "assessment-pn001-001",
-    moduleId: "PN002",
-    moduleName: "Naming",
-    categoryId: "animals",
-    categoryName: "สัตว์",
-    assignedSetId,
-    totalQuestions: 15,
-    reason: "ระบบเลือกแบบฝึกให้จากผลการประเมินที่ผ่านมา",
-    sessionId: sessionResult.data.sessionId,
-    status: "ready",
-  });
+		const body = (await response.json()) as { data: DailyPlanApiPayload };
+		const payload = body.data;
+
+		const planEntries = payload.existingSchedules ?? payload.generatedSchedules;
+
+		console.log(planEntries);
+
+		if (!planEntries) {
+			return createFailure("ไม่พบแผนในวันนี้");
+		}
+
+		const trainingPlans: TodayTrainingPlan[] = [];
+
+		planEntries.forEach((planEntry) => {
+			const schedule = planEntry.dailyPlanSchedule;
+			const title = planEntry.trainingPlan.trainingPlanTitle;
+			const category = payload.category.categoryName;
+			const displayCategoryName = category.toLowerCase().includes("naming")
+				? "ฝึกเรียกชื่อภาพ"
+				: category;
+
+			trainingPlans.push({
+				moduleName: title,
+				categoryId: payload.category.categoryId.toString(),
+				categoryName: displayCategoryName,
+				assignedSetId: planEntry.trainingPlan.trainingSetId.toString(),
+				dailyPlanScheduleId: planEntry.dailyPlanSchedule.dailyPlanScheduleId.toString(),
+				status: schedule.status,
+			});
+		});
+
+		return createSuccess(trainingPlans);
+	} catch {
+		return createFailure("เกิดข้อผิดพลาดในการเชื่อมต่อไปยังระบบแบบฝึก");
+	}
 }

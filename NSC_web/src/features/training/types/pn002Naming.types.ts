@@ -71,7 +71,6 @@ export type NamingResponse = {
   questionId: string;
   setId: NamingSet["id"];
   answerType: "mock_audio" | "skipped";
-  mockAnswer?: string;
   isCorrect?: boolean;
   skipped?: boolean;
   hintLevelUsed: 0 | 1 | 2 | 3;

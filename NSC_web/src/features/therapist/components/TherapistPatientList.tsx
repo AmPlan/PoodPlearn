@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import type { TherapistPatientSummary } from "../types/therapist.types";
 import {
   deletePatient,
   getTherapistDashboardData,
 } from "../services/therapistDashboardService";
+import PatientCodeCopyButton from "./PatientCodeCopyButton";
 
 type TherapistPatientListProps = {
   patients: TherapistPatientSummary[];
@@ -27,7 +28,19 @@ function formatDateTime(value: string | undefined) {
 export default function TherapistPatientList({ patients }: TherapistPatientListProps) {
   const router = useRouter();
   const [visiblePatients, setVisiblePatients] = useState(patients);
-  const [copiedPatientId, setCopiedPatientId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const displayedPatients = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return visiblePatients.filter((p) => {
+      if (statusFilter === "followUp" && !p.needsFollowUp) return false;
+      if (!term) return true;
+      return (
+        (p.name && p.name.toLowerCase().includes(term)) ||
+        (p.code && p.code.toLowerCase().includes(term))
+      );
+    });
+  }, [visiblePatients, searchTerm, statusFilter]);
 
   useEffect(() => {
     let isActive = true;
@@ -64,18 +77,28 @@ export default function TherapistPatientList({ patients }: TherapistPatientListP
     }
   }
 
-  async function handleCopyPatientCode(patientId: string, patientCode: string) {
-    if (typeof navigator === "undefined" || !navigator.clipboard) {
-      return;
-    }
-
-    await navigator.clipboard.writeText(patientCode);
-    setCopiedPatientId(patientId);
-  }
-
   return (
     <div className="grid gap-4">
-      {visiblePatients.map((patient) => (
+      <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="ค้นหาชื่อหรือรหัส"
+            className="rounded-lg border border-[#D7EFF0] bg-white px-3 py-2 text-sm shadow-sm focus:outline-none"
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-lg border border-[#D7EFF0] bg-white px-3 py-2 text-sm"
+          >
+            <option value="all">ทั้งหมด</option>
+            <option value="followUp">ควรติดตาม</option>
+          </select>
+        </div>
+      </div>
+      {displayedPatients.map((patient) => (
         <div
           key={patient.id}
           className="rounded-[30px] bg-white px-6 py-5 shadow-[0_16px_36px_rgba(17,103,99,0.09)] ring-1 ring-[#CDEEEF]"
@@ -84,14 +107,7 @@ export default function TherapistPatientList({ patients }: TherapistPatientListP
             <div>
               <p className="text-2xl font-bold text-[#123232]">{patient.name}</p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-[#EAF9F8] px-4 py-1 text-sm font-bold text-[#0F756F] ring-1 ring-[#CDEEEF]">
-                  Patient Code {patient.code}
-                </span>
-                {copiedPatientId === patient.id ? (
-                  <span className="text-sm font-bold text-[#12847D]">
-                    คัดลอกรหัสแล้ว
-                  </span>
-                ) : null}
+                <PatientCodeCopyButton patientCode={patient.code} />
               </div>
               <p className="mt-2 text-lg font-semibold text-[#557276]">
                 อายุ {patient.age} ปี · ฝึกล่าสุด {formatDateTime(patient.lastSessionAt || patient.latestAssessmentDate)}
@@ -100,7 +116,7 @@ export default function TherapistPatientList({ patients }: TherapistPatientListP
             <div className="flex flex-wrap gap-3 sm:justify-end">
               <Link
                 href={`/therapist/patients/${patient.id}`}
-                className="inline-flex min-h-[50px] items-center justify-center rounded-full bg-[#1FA89C] px-5 text-base font-bold text-white shadow-[0_10px_24px_rgba(31,168,156,0.22)] hover:bg-[#178F84]"
+                className="inline-flex min-h-[50px] items-center justify-center rounded-full border border-[#D7EFF0] bg-white px-5 text-base font-bold text-[#13756F] hover:bg-[#F7FFFF]"
               >
                 ดูรายละเอียด
               </Link>
@@ -110,13 +126,6 @@ export default function TherapistPatientList({ patients }: TherapistPatientListP
               >
                 แก้ไข
               </Link>
-              <button
-                type="button"
-                onClick={() => handleCopyPatientCode(patient.id, patient.code)}
-                className="inline-flex min-h-[50px] items-center justify-center rounded-full bg-white px-5 text-base font-bold text-[#13756F] ring-1 ring-[#CDEEEF] hover:bg-[#F7FFFF]"
-              >
-                คัดลอกรหัส
-              </button>
               <button
                 type="button"
                 onClick={() => handleDelete(patient.id)}

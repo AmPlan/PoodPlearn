@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { title } from 'process';
 import { authorizePatientAccess, parsePatientId } from '@/lib/daily-plan/api-auth';
-import { average, startOfDay } from '@/lib/daily-plan/date-utils';
-import { regenerateReviewSchedule } from '@/lib/daily-plan/generate';
-import {
-  buildCategoryCandidates,
-  buildHistoryEntries,
-  pickDifficultyLevel,
-  REVIEW_PLAN_DAYS,
-  summarizeCategories,
-} from '@/lib/daily-plan/recommendation';
+import { parseLocalDate, startOfDay } from '@/lib/daily-plan/date-utils';
 import { buildEnrichedSchedule } from '@/lib/daily-plan/serialize';
 import { prisma } from '@/lib/prisma';
 
@@ -45,12 +38,14 @@ export async function GET(req: NextRequest, context: DailyPlanContext) {
 
     const { searchParams } = new URL(req.url);
     const dateParam = searchParams.get('date');
-    const targetDate = startOfDay(dateParam ? new Date(dateParam) : new Date());
+    const targetDate = startOfDay(dateParam ? parseLocalDate(dateParam) : new Date());
+
+    console.log(targetDate);
 
     const schedules = await prisma.dailyPlanSchedule.findMany({
       where: { patientId, scheduledDate: targetDate },
       include: {
-        trainingPlan: { include: { category: true, difficultyLevel: true } },
+        trainingPlan: { include: { trainingSet: { include: { category: true, difficultyLevel: true } } } },
         sessionResult: {
           include: { sessionCategoryResult: { include: { trainingSet: true } } },
         },
@@ -73,16 +68,177 @@ export async function POST(req: NextRequest, context: DailyPlanContext) {
     if ('error' in resolved) return resolved.error;
     const { patientId } = resolved;
 
-    const patient = await prisma.patient.findUnique({ where: { patientId } });
-    if (!patient) {
-      return NextResponse.json({ error: 'Patient not found.' }, { status: 404 });
-    }
-
     const body = (await req.json().catch(() => ({}))) as GenerateDailyTrainingPlanBody;
-    const targetDate = startOfDay(body.date ? new Date(body.date) : new Date());
+    const targetDate = startOfDay(body.date ? parseLocalDate(body.date) : new Date());
 
     if (Number.isNaN(targetDate.getTime())) {
       return NextResponse.json({ error: 'Invalid date.' }, { status: 400 });
+    }
+
+    const namingCategory = await prisma.category.findFirst({
+      where: { categoryName: { equals: 'Naming', mode: 'insensitive' } },
+    });
+
+    if (!namingCategory) {
+      return NextResponse.json({ error: 'Naming category not found.' }, { status: 404 });
+    }
+
+    const latestNamingAssessment = await prisma.assessmentCategoryResult.findFirst({
+      where: {
+        assessmentResult: { patientId, endedAt: { not: null } },
+        categoryId: namingCategory.categoryId,
+      },
+      orderBy: { assessmentResult: { startedAt: 'desc' } },
+    });
+
+    let difficultyId = latestNamingAssessment?.recommendedDifficultyId ?? null;
+
+    let selectedTrainingSets = await prisma.trainingSet.findMany({
+      where: {
+        categoryId: namingCategory.categoryId,
+        difficultyId: difficultyId ?? undefined,
+        deletedAt: null,
+      },
+      include: { category: true, difficultyLevel: true },
+      orderBy: { setId: 'asc' },
+    });
+
+    if (selectedTrainingSets.length === 0) {
+      const fallbackTrainingSet = await prisma.trainingSet.findFirst({
+        where: { categoryId: namingCategory.categoryId, deletedAt: null },
+        include: { category: true, difficultyLevel: true },
+        orderBy: { difficultyId: 'asc' },
+      });
+
+      if (!fallbackTrainingSet) {
+        return NextResponse.json(
+          { error: 'Unable to determine a difficulty level for Naming training.' },
+          { status: 500 }
+        );
+      }
+
+      difficultyId = fallbackTrainingSet.difficultyId;
+      selectedTrainingSets = [fallbackTrainingSet];
+    }
+
+    const selectedCount = Math.min(selectedTrainingSets.length, 2);
+    selectedTrainingSets = selectedTrainingSets.sort(() => Math.random() - 0.5).slice(0, selectedCount);
+
+    const existingSchedules = await prisma.dailyPlanSchedule.findMany({
+      where: {
+        patientId,
+        scheduledDate: targetDate,
+        status: { in: ['PENDING', 'COMPLETED'] },
+      },
+      include: {
+        trainingPlan: {
+          include: {
+            trainingSet: {
+              select: {
+                title: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { trainingPlan: { planRole: 'asc' } },
+    });
+
+    if (existingSchedules.length > 0) {
+      const enriched = existingSchedules.map((schedule) => ({
+        scheduledDate: schedule.scheduledDate,
+        planRole: schedule.trainingPlan.planRole,
+        trainingPlan: {
+          trainingPlanTitle: schedule.trainingPlan.trainingSet.title,
+          trainingPlanId: schedule.trainingPlan.trainingPlanId,
+          trainingSetId: schedule.trainingPlan.trainingSetId,
+        },
+        dailyPlanSchedule: {
+          dailyPlanScheduleId: schedule.dailyPlanScheduleId,
+          status: schedule.status,
+        },
+      }));
+
+      return NextResponse.json(
+        {
+          message: 'Daily training plan already exists for this date.',
+          data: {
+            category: {
+              categoryId: namingCategory.categoryId,
+              categoryName: namingCategory.categoryName,
+            },
+            difficultyId,
+            existingScheduleCount: enriched.length,
+            existingSchedules: enriched,
+          },
+        },
+        { status: 201 }
+      );
+    }
+
+    const planRoles = ['MAIN', 'SECONDARY'] as const;
+
+    const generatedSchedules = await prisma.$transaction(async (tx) =>
+      Promise.all(
+        selectedTrainingSets.map(async (trainingSet, index) => {
+          const planRole = planRoles[index] ?? 'SECONDARY';
+          const trainingPlan = await tx.trainingPlan.create({
+            data: {
+              patientId,
+              trainingSetId: trainingSet.setId,
+              planRole,
+            },
+          });
+
+          const dailyPlanSchedule = await tx.dailyPlanSchedule.create({
+            data: {
+              patientId,
+              trainingPlanId: trainingPlan.trainingPlanId,
+              scheduledDate: targetDate,
+              status: 'PENDING',
+            },
+          });
+
+          return {
+            scheduledDate: targetDate,
+            planRole,
+            trainingPlan: {
+              trainingPlanId: trainingPlan.trainingPlanId,
+              trainingPlanTitle: trainingSet.title,
+              trainingSetId: trainingPlan.trainingSetId,
+
+            },
+            dailyPlanSchedule: {
+              dailyPlanScheduleId: dailyPlanSchedule.dailyPlanScheduleId,
+              status: dailyPlanSchedule.status,
+            },
+          };
+        })
+      )
+    );
+
+    return NextResponse.json(
+      {
+        message: 'Daily training plan generated successfully.',
+        data: {
+          category: {
+            categoryId: namingCategory.categoryId,
+            categoryName: namingCategory.categoryName,
+          },
+          difficultyId,
+          generatedScheduleCount: generatedSchedules.length,
+          generatedSchedules,
+        },
+      },
+      { status: 201 }
+    );
+
+    /*
+    Old POST implementation preserved for future reference:
+
+    const patient = await prisma.patient.findUnique({ where: { patientId } });
+    if (!patient) {
+      return NextResponse.json({ error: 'Patient not found.' }, { status: 404 });
     }
 
     const [historyResults, availableTrainingSets, difficultyLevels] = await Promise.all([
@@ -179,6 +335,7 @@ export async function POST(req: NextRequest, context: DailyPlanContext) {
       { message: 'Daily training plan generated successfully.', data: result },
       { status: 201 }
     );
+    */
   } catch (error) {
     console.error('Failed to generate daily training plan:', error);
     return NextResponse.json({ error: 'Unable to generate daily training plan.' }, { status: 500 });

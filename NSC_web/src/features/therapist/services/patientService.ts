@@ -24,6 +24,9 @@ import {
 } from "./mappers/patientMapper";
 import { mapApiSessionToRecentSession } from "./mappers/sessionMapper";
 
+type DailyPlanProgressResponse = {
+  progressByPatient: Record<string, number>;
+};
 
 // ---------------------------------------------------------------------------
 // Dashboard
@@ -67,6 +70,17 @@ export async function getTherapistDashboardData(
     ? patientsResult.data.data.map(mapApiPatientToSummary)
     : [];
 
+  const patientIds = patients.map((patient) => patient.id).join(",");
+  const dailyPlanProgressResult = await request<DailyPlanProgressResponse>(
+    "/api/v1/therapist",
+    `/daily-plan-progress?patientIds=${patientIds}`,
+    undefined,
+    serverContext,
+  );
+  const progressByPatient = dailyPlanProgressResult.success
+    ? dailyPlanProgressResult.data.progressByPatient
+    : {};
+
   const patientsWithAssessments = await Promise.all(
     patients.map(async (patient) => {
       const assessment = await getLatestAssessmentForPatient(patient.id, serverContext);
@@ -76,7 +90,7 @@ export async function getTherapistDashboardData(
       const lastSessionDate = patient.lastSessionAt ? new Date(patient.lastSessionAt) : null;
       const lastAssessmentDate = assessment?.endedAt ? new Date(assessment.endedAt) : null;
 
-      const sessionPercentage = lastSessionDate ? (isToday(lastSessionDate) ? 100 : 0) : 0;
+      const sessionPercentage = progressByPatient[patient.id] ?? 0;
 
 
       if (lastSessionDate || lastAssessmentDate) {

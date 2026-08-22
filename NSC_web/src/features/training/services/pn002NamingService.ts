@@ -78,15 +78,6 @@ type SessionApiResponse = {
   };
 };
 
-type SessionItemApiResponse = {
-  message?: string;
-  isCorrect?: boolean;
-  score?: number;
-  correctness?: number;
-  data?: unknown;
-  error?: string; // Added to handle error payloads
-};
-
 type NamingSessionCategoryApiResult = {
   sessionCategoryId: number;
   sessionId: number;
@@ -252,7 +243,6 @@ export function getSavedNamingResponsesForPatient(_patientId: string) {
     response: {
       responseId: string;
       submittedAt: string;
-      mockAnswer?: string | null;
       skipped: boolean;
       isCorrect: boolean;
       hintLevelUsed?: number | null;
@@ -263,13 +253,21 @@ export function getSavedNamingResponsesForPatient(_patientId: string) {
   }>;
 }
 
-export async function createMockNamingSession(setId: NamingSet["id"], patientId: number): Promise<TrainingServiceResult<NamingSessionState>> {
+export async function createNamingSession(
+  setId: NamingSet["id"],
+  patientId: number,
+  dailyPlanScheduleId?: string,
+): Promise<TrainingServiceResult<NamingSessionState>> {
   try {
     const baseUrl = getBaseUrl();
     const response = await fetch(`${baseUrl}/api/v1/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ patientId, setId: Number(setId) }),
+      body: JSON.stringify({
+        patientId,
+        setId: Number(setId),
+        dailyPlanScheduleId: dailyPlanScheduleId ? Number(dailyPlanScheduleId) : undefined,
+      }),
       cache: "no-store",
     });
 
@@ -298,7 +296,7 @@ export async function createMockNamingSession(setId: NamingSet["id"], patientId:
   }
 }
 
-export async function getMockNamingSessionById(sessionId: string): Promise<TrainingServiceResult<NamingSessionState>> {
+export async function getNamingSessionById(sessionId: string): Promise<TrainingServiceResult<NamingSessionState>> {
   try {
     const baseUrl = getBaseUrl();
     const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}`, {
@@ -337,7 +335,7 @@ export async function getMockNamingSessionById(sessionId: string): Promise<Train
   }
 }
 
-export async function submitMockNamingAnswer(
+export async function submitNamingAnswer(
   response: Omit<NamingResponse, "responseId" | "submittedAt">
 ): Promise<TrainingServiceResult<SessionResponse>> {
   try {
@@ -381,7 +379,8 @@ export async function submitMockNamingAnswer(
  * completed, and updates progress tracking.
  */
 export async function completeNamingSession(
-  sessionId: string
+  sessionId: string,
+  dailyPlanScheduleId?: string,
 ): Promise<TrainingServiceResult<CompleteNamingSessionResult>> {
   try {
     const numericSessionId = Number(sessionId);
@@ -394,6 +393,9 @@ export async function completeNamingSession(
     const response = await fetch(`${baseUrl}/api/v1/sessions/${numericSessionId}/complete`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        dailyPlanScheduleId: dailyPlanScheduleId ? Number(dailyPlanScheduleId) : undefined,
+      }),
       cache: "no-store",
     });
 
@@ -413,8 +415,11 @@ export async function completeNamingSession(
   }
 }
 
-export async function getMockNamingSessionSummary(sessionId: string): Promise<TrainingServiceResult<NamingSessionSummary>> {
-  const completeResult = await completeNamingSession(sessionId);
+export async function getNamingSessionSummary(
+  sessionId: string,
+  dailyPlanScheduleId?: string,
+): Promise<TrainingServiceResult<NamingSessionSummary>> {
+  const completeResult = await completeNamingSession(sessionId, dailyPlanScheduleId);
 
   if (!completeResult.success) {
     return createFailure(completeResult.errorMessage);

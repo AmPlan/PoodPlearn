@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+@theme {
+  /* แก้ไข breakpoint 'lg' ให้เริ่มที่ 1025px */
+  --breakpoint-lg: 1025px;
+}
+
+
 :root {
   --background: #effbfd;
   --foreground: #123232;
@@ -9,6 +15,7 @@ html,
 body {
   min-height: 100%;
 }
+
 
 body {
   margin: 0;
