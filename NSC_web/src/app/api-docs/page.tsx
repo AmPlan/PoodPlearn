@@ -1,17 +1,16 @@
 "use client";
 
-import "swagger-ui-react/swagger-ui.css";
+import { ApiReferenceReact } from "@scalar/api-reference-react";
 
-import dynamic from "next/dynamic";
-
-const SwaggerUI = dynamic(() => import("swagger-ui-react"), {
-  loading: () => <p>Loading Component...</p>,
-});
+import "@scalar/api-reference-react/style.css";
 
 export default function ApiDocsPage() {
   return (
-    <section>
-      <SwaggerUI url="/openapi.json" />
-    </section>
+    <ApiReferenceReact
+      configuration={{
+        _integration: "nextjs",
+        url: "/openapi.json",
+      }}
+    />
   );
 }

@@ -12,28 +12,26 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.10.0",
+    "@scalar/api-reference-react": "^0.9.67",
     "dotenv": "^17.4.2",
-    "intellisense": "^0.0.1",
     "lucide-react": "^1.16.0",
     "next": "^16.3.1",
-    "pg": "^8.22.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "swagger-ui-react": "^5.32.15",
-    "vscode-ripgrep": "^1.13.2"
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@scalar/api-reference-react": "^0.9.67",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/swagger-ui-react": "^5.18.0",
     "ajv": "^8.20.0",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.6",
+    "eslint": "^10.10.0",
+    "eslint-config-next": "^16.3.4",
     "next-openapi-gen": "^1.8.1",
-    "oxlint": "^1.81.0",
+    "oxfmt": "^0.67.0",
+    "oxlint": "^1.82.0",
     "prisma": "^7.10.0",
     "tailwindcss": "^4",
     "typescript": "^5"
@@ -45,6 +43,13 @@
   "allowScripts": {
     "@prisma/engines@7.10.0": true,
     "prisma@7.10.0": true,
-    "unrs-resolver@1.12.2": true
+    "unrs-resolver@1.12.2": true,
+    "vue-demi": true,
+    "tree-sitter": true,
+    "@tree-sitter-grammars/tree-sitter-yaml": true,
+    "tree-sitter-json": true,
+    "vscode-ripgrep": true,
+    "core-js-pure": true,
+    "@scarf/scarf": false
   }
 }

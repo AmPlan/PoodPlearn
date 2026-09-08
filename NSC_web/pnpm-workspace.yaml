@@ -1,8 +1,13 @@
 allowBuilds:
-  '@prisma/engines': set this to true or false
-  prisma: set this to true or false
-  unrs-resolver: set this to true or false
-  vscode-ripgrep: set this to true or false
+  '@prisma/engines': true
+  '@scarf/scarf': true
+  '@tree-sitter-grammars/tree-sitter-yaml': true
+  core-js-pure: true
+  prisma: true
+  tree-sitter: true
+  tree-sitter-json: true
+  unrs-resolver: true
+  vscode-ripgrep: true
   vue-demi: set this to true or false
 minimumReleaseAgeExclude:
   - '@scalar/agent-chat@0.12.30'
@@ -21,3 +26,43 @@ minimumReleaseAgeExclude:
   - '@scalar/types@0.19.0'
   - '@scalar/use-hooks@0.4.11'
   - '@scalar/workspace-store@0.60.0'
+  - '@oxfmt/binding-android-arm-eabi@0.67.0'
+  - '@oxfmt/binding-android-arm64@0.67.0'
+  - '@oxfmt/binding-darwin-arm64@0.67.0'
+  - '@oxfmt/binding-darwin-x64@0.67.0'
+  - '@oxfmt/binding-freebsd-x64@0.67.0'
+  - '@oxfmt/binding-linux-arm-gnueabihf@0.67.0'
+  - '@oxfmt/binding-linux-arm-musleabihf@0.67.0'
+  - '@oxfmt/binding-linux-arm64-gnu@0.67.0'
+  - '@oxfmt/binding-linux-arm64-musl@0.67.0'
+  - '@oxfmt/binding-linux-ppc64-gnu@0.67.0'
+  - '@oxfmt/binding-linux-riscv64-gnu@0.67.0'
+  - '@oxfmt/binding-linux-riscv64-musl@0.67.0'
+  - '@oxfmt/binding-linux-s390x-gnu@0.67.0'
+  - '@oxfmt/binding-linux-x64-gnu@0.67.0'
+  - '@oxfmt/binding-linux-x64-musl@0.67.0'
+  - '@oxfmt/binding-openharmony-arm64@0.67.0'
+  - '@oxfmt/binding-win32-arm64-msvc@0.67.0'
+  - '@oxfmt/binding-win32-ia32-msvc@0.67.0'
+  - '@oxfmt/binding-win32-x64-msvc@0.67.0'
+  - '@oxlint/binding-android-arm-eabi@1.82.0'
+  - '@oxlint/binding-android-arm64@1.82.0'
+  - '@oxlint/binding-darwin-arm64@1.82.0'
+  - '@oxlint/binding-darwin-x64@1.82.0'
+  - '@oxlint/binding-freebsd-x64@1.82.0'
+  - '@oxlint/binding-linux-arm-gnueabihf@1.82.0'
+  - '@oxlint/binding-linux-arm-musleabihf@1.82.0'
+  - '@oxlint/binding-linux-arm64-gnu@1.82.0'
+  - '@oxlint/binding-linux-arm64-musl@1.82.0'
+  - '@oxlint/binding-linux-ppc64-gnu@1.82.0'
+  - '@oxlint/binding-linux-riscv64-gnu@1.82.0'
+  - '@oxlint/binding-linux-riscv64-musl@1.82.0'
+  - '@oxlint/binding-linux-s390x-gnu@1.82.0'
+  - '@oxlint/binding-linux-x64-gnu@1.82.0'
+  - '@oxlint/binding-linux-x64-musl@1.82.0'
+  - '@oxlint/binding-openharmony-arm64@1.82.0'
+  - '@oxlint/binding-win32-arm64-msvc@1.82.0'
+  - '@oxlint/binding-win32-ia32-msvc@1.82.0'
+  - '@oxlint/binding-win32-x64-msvc@1.82.0'
+  - oxfmt@0.67.0
+  - oxlint@1.82.0

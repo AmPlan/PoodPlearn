@@ -101,7 +101,7 @@ export default defineConfig({
   schemaType: "zod",
   schemaFiles: [],
   docsUrl: "api-docs",
-  ui: "swagger",
+  ui: "scalar",
   outputFile: "openapi.json",
   outputDir: "./public",
   diagnostics: {
