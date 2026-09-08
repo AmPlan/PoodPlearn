@@ -3,6 +3,7 @@ node_modules/
 generated/
 .env
 .env.local
+.openapi-gen
 .venv/
 .vscode/
 __pycache__/
