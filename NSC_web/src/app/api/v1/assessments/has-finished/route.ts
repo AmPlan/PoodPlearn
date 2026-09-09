@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { AUTH_COOKIE_NAME, verifySession } from '@/lib/auth';
+import { AUTH_COOKIE_NAME, verifySession } from '@/lib/oldAuth';
 import { prisma } from '@/lib/prisma';
 
 const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET;

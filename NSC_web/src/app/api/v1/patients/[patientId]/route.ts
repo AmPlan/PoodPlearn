@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { AUTH_COOKIE_NAME, verifySession } from '@/lib/auth';
+import { AUTH_COOKIE_NAME, verifySession } from '@/lib/oldAuth';
 import { Prisma, prisma } from '@/lib/prisma';
 
 type PatientRouteContext = {

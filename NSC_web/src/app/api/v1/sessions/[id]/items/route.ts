@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { cookies } from 'next/headers';
 
-import { AUTH_COOKIE_NAME, verifySession } from '@/lib/auth';
+import { AUTH_COOKIE_NAME, verifySession } from '@/lib/oldAuth';
 import { prisma } from '@/lib/prisma';
 import { submitAnswer, submitAnswerWithComparison } from '@/lib/grader';
 

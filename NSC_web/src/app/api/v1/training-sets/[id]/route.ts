@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma"; // <-- Update this path
-import { AUTH_COOKIE_NAME, verifySession } from "@/lib/auth";
+import { AUTH_COOKIE_NAME, verifySession } from "@/lib/oldAuth";
 
 // GET a specific training set by ID (with full question data)
 export async function GET(

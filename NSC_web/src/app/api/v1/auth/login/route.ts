@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { AUTH_COOKIE_NAME, signSession, type UserRole } from '@/lib/auth';
+import { AUTH_COOKIE_NAME, signSession, type UserRole } from '@/lib/oldAuth';
 import { prisma } from '@/lib/prisma';
 
 type LoginBody = {

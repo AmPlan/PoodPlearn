@@ -9,8 +9,8 @@ datasource db {
 
 model User {
   userId     Int         @id @default(autoincrement()) @map("user_id")
-  account    String      @db.VarChar(255)
-  password   String      @db.VarChar(255)
+  account    String      @unique @db.VarChar(255)
+  password   String?     @db.VarChar(255) //TODO Delete after auth.js complete
   createdAt  DateTime    @default(now()) @map("created_at")
   updatedAt  DateTime    @updatedAt @map("updated_at")
   deletedAt  DateTime?   @map("deleted_at")
@@ -18,42 +18,50 @@ model User {
   patients   Patient[]
   therapists Therapist[]
 
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  sessions      Session[]
+  accounts      Account[]
+
+  @@unique([email])
   @@map("Users")
 }
 
 model Patient {
-  patientId             Int                 @id @default(autoincrement()) @map("patient_id")
-  userId                Int                 @map("user_id")
-  patientFirstName      String              @map("patient_first_name") @db.VarChar(255)
-  patientLastName       String              @map("patient_last_name") @db.VarChar(255)
-  dateOfBirth           DateTime            @map("date_of_birth") @db.Date
-  occupation            String              @db.VarChar(255)
-  province              String              @db.VarChar(255)
-  caregiverFirstName    String              @map("caregiver_first_name") @db.VarChar(255)
-  caregiverLastName     String              @map("caregiver_last_name") @db.VarChar(255)
-  caregiverRelationship String              @map("caregiver_relationship") @db.VarChar(255)
-  createdAt             DateTime            @default(now()) @map("created_at")
-  updatedAt             DateTime            @updatedAt @map("updated_at")
-  caregiverTelephone    String?             @db.VarChar(15)
-  childrenCount         Int                 @default(0)
-  familyStatus          String?             @db.VarChar(255)
-  householdMembersCount Int                 @default(0)
+  patientId             Int                @id @default(autoincrement()) @map("patient_id")
+  userId                Int                @unique @map("user_id")
+  patientFirstName      String             @map("patient_first_name") @db.VarChar(255)
+  patientLastName       String             @map("patient_last_name") @db.VarChar(255)
+  dateOfBirth           DateTime           @map("date_of_birth") @db.Date
+  occupation            String             @db.VarChar(255)
+  province              String             @db.VarChar(255)
+  caregiverFirstName    String             @map("caregiver_first_name") @db.VarChar(255)
+  caregiverLastName     String             @map("caregiver_last_name") @db.VarChar(255)
+  caregiverRelationship String             @map("caregiver_relationship") @db.VarChar(255)
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
+  caregiverTelephone    String?            @db.VarChar(15)
+  childrenCount         Int                @default(0)
+  familyStatus          String?            @db.VarChar(255)
+  householdMembersCount Int                @default(0)
   note                  String?
-  postcode              String?             @db.VarChar(5)
+  postcode              String?            @db.VarChar(5)
   gender                Gender
   assessmentResults     AssessmentResult[]
-  dailyPlanSchedules    DailyPlanSchedule[]
-  user                  User                @relation(fields: [userId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  user                  User               @relation(fields: [userId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
   progressTrackings     ProgressTracking[]
   sessionResults        SessionResult[]
   trainingPlans         TrainingPlan[]
 
+  @@index([userId])
   @@map("Patients")
 }
 
 model Therapist {
   therapistId Int      @id @default(autoincrement()) @map("therapist_id")
-  userId      Int      @map("user_id")
+  userId      Int      @unique @map("user_id")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   user        User     @relation(fields: [userId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
@@ -98,6 +106,8 @@ model TrainingSet {
   category               Category                @relation(fields: [categoryId], references: [categoryId], onDelete: NoAction, onUpdate: NoAction)
   difficultyLevel        DifficultyLevel         @relation(fields: [difficultyId], references: [difficultyId], onDelete: NoAction, onUpdate: NoAction)
 
+  @@index([categoryId])
+  @@index([difficultyId])
   @@map("Training_Sets")
 }
 
@@ -109,6 +119,7 @@ model TrainingSetQuestion {
   trainingSet TrainingSet @relation(fields: [setId], references: [setId], onDelete: Cascade)
 
   @@id([setId, questionId])
+  @@index([questionId])
   @@map("Training_Set_Questions")
 }
 
@@ -127,12 +138,13 @@ model Question {
   trainingSets                TrainingSetQuestion[]
   ComprehensionQuestion       ComprehensionQuestion[]
 
+  @@index([difficultyId])
   @@map("Questions")
 }
 
 model NamingQuestion {
   namingQuestionId      Int      @id @default(autoincrement()) @map("naming_question_id")
-  questionId            Int      @map("question_id")
+  questionId            Int      @unique @map("question_id")
   correctAnswer         String   @map("correct_answer") @db.VarChar(255)
   correctAnswerVoiceUrl String   @map("correct_answer_voice_url") @db.VarChar(255)
   imageUrl              String   @map("image_url") @db.VarChar(255)
@@ -142,12 +154,13 @@ model NamingQuestion {
   hint2VoiceUrl         String   @map("hint_2_voice_url") @db.VarChar(255)
   question              Question @relation(fields: [questionId], references: [questionId])
 
+  @@index([questionId])
   @@map("Naming_Questions")
 }
 
 model ComprehensionImageQuestion {
   comprehensionImageQuestionId Int      @id @default(autoincrement()) @map("comprehension_image_question_id")
-  questionId                   Int      @map("question_id")
+  questionId                   Int      @unique @map("question_id")
   questionText                 String   @map("question_text") @db.VarChar(255)
   questionVoiceUrl             String   @map("question_voice_url") @db.VarChar(255)
   correctImageUrl              String   @map("correct_image_url") @db.VarChar(255)
@@ -155,34 +168,37 @@ model ComprehensionImageQuestion {
   wrongImageUrl2               String   @map("wrong_image_url_2") @db.VarChar(255)
   question                     Question @relation(fields: [questionId], references: [questionId])
 
+  @@index([questionId])
   @@map("Comprehension_Image_Questions")
 }
 
 model ComprehensionQuestion {
   comprehensionQuestionId Int      @id @default(autoincrement()) @map("comprehension_question_id")
-  questionId              Int      @map("question_id")
+  questionId              Int      @unique @map("question_id")
   customCondition         String?  @map("custom_condition") @db.VarChar(255)
   correctAnswer           Boolean? @map("correct_answer")
   questionText            String   @map("question_text") @db.VarChar(255)
   questionVoiceUrl        String   @map("question_voice_url") @db.VarChar(255)
   question                Question @relation(fields: [questionId], references: [questionId])
 
-  @@map("comprehension_question_id")
+  @@index([questionId])
+  @@map("Comprehension_Questions")
 }
 
 model RepetitionQuestion {
   repetitionQuestionId Int      @id @default(autoincrement()) @map("repetition_question_id")
-  questionId           Int      @map("question_id")
+  questionId           Int      @unique @map("question_id")
   text                 String   @db.VarChar(255)
   textVoiceUrl         String   @map("text_voice_url") @db.VarChar(255)
   question             Question @relation(fields: [questionId], references: [questionId])
 
+  @@index([questionId])
   @@map("Repetition_Questions")
 }
 
 model SpontaneousQuestion {
   spontaneousQuestionId Int      @id @default(autoincrement()) @map("spontaneous_question_id")
-  questionId            Int      @map("question_id")
+  questionId            Int      @unique @map("question_id")
   correctAnswer         String?  @map("correct_answer") @db.VarChar(255)
   correctAnswerVoiceUrl String?  @map("correct_answer_voice_url") @db.VarChar(255)
   questionText          String   @map("question_text") @db.VarChar(255)
@@ -190,6 +206,7 @@ model SpontaneousQuestion {
   customCondition       String?  @map("custom_condition") @db.VarChar(255)
   question              Question @relation(fields: [questionId], references: [questionId])
 
+  @@index([questionId])
   @@map("Spontaneous_Questions")
 }
 
@@ -200,6 +217,7 @@ model SessionResult {
   sessionCategoryResult SessionCategoryResult?
   patient               Patient                @relation(fields: [patientId], references: [patientId])
 
+  @@index([patientId])
   @@map("Session_Results")
 }
 
@@ -216,6 +234,7 @@ model SessionCategoryResult {
   trainingSet         TrainingSet         @relation(fields: [setId], references: [setId])
   sessionItemResults  SessionItemResult[]
 
+  @@index([setId])
   @@map("Session_Category_Results")
 }
 
@@ -228,14 +247,16 @@ model SessionItemResult {
   score                 Decimal               @db.Decimal(3, 2)
   responseTime          Decimal               @map("response_time") @db.Decimal(5, 2)
   correctness           Decimal?              @db.Decimal(6, 3)
-  createdAt             DateTime              @default(now()) @map("created_at") @db.Date
+  createdAt             DateTime              @default(now()) @map("created_at")
   answerImageUrl        String?               @map("answer_image_url") @db.VarChar(255)
   answerBoolean         Boolean?              @map("answer_boolean")
   audioFileName         String?               @map("audio_file_name")
-  sttModel              String?               @map("sst_model")
+  sttModel              String?               @map("stt_model")
   question              Question              @relation(fields: [questionId], references: [questionId], onDelete: NoAction, onUpdate: NoAction)
   sessionCategoryResult SessionCategoryResult @relation(fields: [sessionCategoryId], references: [sessionCategoryId], onDelete: NoAction, onUpdate: NoAction)
 
+  @@index([questionId])
+  @@index([sessionCategoryId])
   @@map("Session_Item_Results")
 }
 
@@ -250,7 +271,9 @@ model AssessmentResult {
   patient                   Patient                    @relation(fields: [patientId], references: [patientId])
   trainingSet               TrainingSet                @relation(fields: [setId], references: [setId], onDelete: NoAction, onUpdate: NoAction)
 
-  @@map("Assessment_Result")
+  @@index([patientId])
+  @@index([setId])
+  @@map("Assessment_Results")
 }
 
 model AssessmentItemResult {
@@ -265,11 +288,13 @@ model AssessmentItemResult {
   isCorrect                 Boolean                    @map("is_correct")
   createdAt                 DateTime                   @default(now()) @map("created_at")
   audioFileName             String?                    @map("audio_file_name")
-  sttModel                  String?                    @map("sst_model")
+  sttModel                  String?                    @map("stt_model")
   assessmentCategoryResults AssessmentCategoryResult[]
   assessmentResult          AssessmentResult           @relation(fields: [assessmentResultId], references: [assessmentResultId], onDelete: NoAction, onUpdate: NoAction)
   question                  Question                   @relation(fields: [questionId], references: [questionId], onDelete: NoAction, onUpdate: NoAction)
 
+  @@index([assessmentResultId])
+  @@index([questionId])
   @@map("Assessment_Item_Results")
 }
 
@@ -287,6 +312,10 @@ model AssessmentCategoryResult {
   category                   Category              @relation(fields: [categoryId], references: [categoryId], onDelete: NoAction, onUpdate: NoAction)
   recommendedDifficulty      DifficultyLevel?      @relation(fields: [recommendedDifficultyId], references: [difficultyId], onDelete: NoAction, onUpdate: NoAction)
 
+  @@index([assessmentItemResultId])
+  @@index([assessmentResultId])
+  @@index([categoryId])
+  @@index([recommendedDifficultyId])
   @@map("Assessment_Category_Results")
 }
 
@@ -301,23 +330,25 @@ model TrainingPlan {
   patient            Patient             @relation(fields: [patientId], references: [patientId], onDelete: NoAction, onUpdate: NoAction)
   trainingSet        TrainingSet         @relation(fields: [trainingSetId], references: [setId], onDelete: NoAction, onUpdate: NoAction)
 
+  @@index([patientId])
+  @@index([trainingSetId])
   @@map("Training_Plans")
 }
 
 model DailyPlanSchedule {
   dailyPlanScheduleId Int            @id @default(autoincrement()) @map("daily_plan_schedule_id")
   trainingPlanId      Int            @map("training_plan_id")
-  patientId           Int            @map("patient_id")
   scheduledDate       DateTime       @map("scheduled_date") @db.Date
   status              ScheduleStatus @default(PENDING)
   sessionId           Int?           @map("session_id")
   createdAt           DateTime       @default(now()) @map("created_at")
   updatedAt           DateTime       @updatedAt @map("updated_at")
-  patient             Patient        @relation(fields: [patientId], references: [patientId], onDelete: NoAction, onUpdate: NoAction)
   sessionResult       SessionResult? @relation(fields: [sessionId], references: [sessionId], onDelete: NoAction, onUpdate: NoAction)
   trainingPlan        TrainingPlan   @relation(fields: [trainingPlanId], references: [trainingPlanId], onDelete: NoAction, onUpdate: NoAction)
 
-  @@unique([patientId, scheduledDate, trainingPlanId])
+  @@unique([scheduledDate, trainingPlanId])
+  @@index([sessionId])
+  @@index([trainingPlanId])
   @@map("Daily_Plan_Schedule")
 }
 
@@ -328,6 +359,7 @@ model ProgressTracking {
   progressCategories ProgressCategory[]
   patient            Patient            @relation(fields: [patientId], references: [patientId])
 
+  @@index([patientId])
   @@map("Progress_Tracking")
 }
 
@@ -343,6 +375,7 @@ model ProgressCategory {
   progressTracking       ProgressTracking @relation(fields: [progressTrackingId], references: [progressTrackingId])
 
   @@id([progressTrackingId, categoryId])
+  @@index([categoryId])
   @@map("Progress_Category")
 }
 
@@ -377,4 +410,52 @@ enum ScheduleStatus {
   COMPLETED
   SKIPPED
   EXPIRED
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    Int
+  user      User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                Int
+  user                  User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
 }
