@@ -1,3 +1,4 @@
+
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -8,9 +9,7 @@ datasource db {
 }
 
 model User {
-  userId     Int         @id @default(autoincrement()) @map("user_id")
-  account    String      @unique @db.VarChar(255)
-  password   String?     @db.VarChar(255) //TODO Delete after auth.js complete
+  id         String      @id
   createdAt  DateTime    @default(now()) @map("created_at")
   updatedAt  DateTime    @updatedAt @map("updated_at")
   deletedAt  DateTime?   @map("deleted_at")
@@ -18,6 +17,7 @@ model User {
   patients   Patient[]
   therapists Therapist[]
 
+  account       String?
   name          String
   email         String
   emailVerified Boolean   @default(false)
@@ -25,13 +25,18 @@ model User {
   sessions      Session[]
   accounts      Account[]
 
+  banned     Boolean?  @default(false)
+  banReason  String?
+  banExpires DateTime?
+
   @@unique([email])
   @@map("Users")
+  @@unique([account])
 }
 
 model Patient {
   patientId             Int                @id @default(autoincrement()) @map("patient_id")
-  userId                Int                @unique @map("user_id")
+  userId                String             @unique @map("user_id")
   patientFirstName      String             @map("patient_first_name") @db.VarChar(255)
   patientLastName       String             @map("patient_last_name") @db.VarChar(255)
   dateOfBirth           DateTime           @map("date_of_birth") @db.Date
@@ -50,7 +55,7 @@ model Patient {
   postcode              String?            @db.VarChar(5)
   gender                Gender
   assessmentResults     AssessmentResult[]
-  user                  User               @relation(fields: [userId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  user                  User               @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   progressTrackings     ProgressTracking[]
   sessionResults        SessionResult[]
   trainingPlans         TrainingPlan[]
@@ -61,10 +66,10 @@ model Patient {
 
 model Therapist {
   therapistId Int      @id @default(autoincrement()) @map("therapist_id")
-  userId      Int      @unique @map("user_id")
+  userId      String   @unique @map("user_id")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
-  user        User     @relation(fields: [userId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  user        User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("Therapists")
 }
@@ -250,8 +255,6 @@ model SessionItemResult {
   createdAt             DateTime              @default(now()) @map("created_at")
   answerImageUrl        String?               @map("answer_image_url") @db.VarChar(255)
   answerBoolean         Boolean?              @map("answer_boolean")
-  audioFileName         String?               @map("audio_file_name")
-  sttModel              String?               @map("stt_model")
   question              Question              @relation(fields: [questionId], references: [questionId], onDelete: NoAction, onUpdate: NoAction)
   sessionCategoryResult SessionCategoryResult @relation(fields: [sessionCategoryId], references: [sessionCategoryId], onDelete: NoAction, onUpdate: NoAction)
 
@@ -287,8 +290,6 @@ model AssessmentItemResult {
   answerBoolean             Boolean?                   @map("answer_boolean")
   isCorrect                 Boolean                    @map("is_correct")
   createdAt                 DateTime                   @default(now()) @map("created_at")
-  audioFileName             String?                    @map("audio_file_name")
-  sttModel                  String?                    @map("stt_model")
   assessmentCategoryResults AssessmentCategoryResult[]
   assessmentResult          AssessmentResult           @relation(fields: [assessmentResultId], references: [assessmentResultId], onDelete: NoAction, onUpdate: NoAction)
   question                  Question                   @relation(fields: [questionId], references: [questionId], onDelete: NoAction, onUpdate: NoAction)
@@ -420,8 +421,10 @@ model Session {
   updatedAt DateTime @updatedAt
   ipAddress String?
   userAgent String?
-  userId    Int
-  user      User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  impersonatedBy String?
 
   @@unique([token])
   @@index([userId])
@@ -432,8 +435,8 @@ model Account {
   id                    String    @id
   accountId             String
   providerId            String
-  userId                Int
-  user                  User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?
   refreshToken          String?
   idToken               String?
