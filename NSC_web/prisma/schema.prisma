@@ -381,6 +381,7 @@ model ProgressCategory {
 }
 
 enum Role {
+  admin   @map("ADMIN")
   PATIENT
   THERAPIST
 }

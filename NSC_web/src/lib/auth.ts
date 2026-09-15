@@ -18,8 +18,11 @@ export const auth = betterAuth({
                 }
             }
         }),
-        admin()
-    ], 
+        admin({
+            adminRoles: ["ADMIN"],
+            defaultRole: "PATIENT",
+        })
+    ],
     database: prismaAdapter(prisma, {
         provider: "postgresql",
     }),
