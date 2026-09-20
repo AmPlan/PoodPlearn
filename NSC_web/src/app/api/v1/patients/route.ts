@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { headers } from 'next/headers';
 
-import { AUTH_COOKIE_NAME, verifySession } from '@/lib/oldAuth';
+import { auth, getEmail } from '@/lib/auth';
 import { Prisma, prisma } from '@/lib/prisma';
 
 type CreatePatientBody = {
@@ -57,14 +57,15 @@ function isValidGender(value: string | undefined): value is 'MALE' | 'FEMALE' | 
 // ==========================================
 export async function GET(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
 
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
     }
 
-    if (session.role !== 'THERAPIST') {
+    if (session.user.role !== 'THERAPIST') {
       return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
     }
 
@@ -86,7 +87,7 @@ export async function GET(req: NextRequest) {
           OR: [
             { patientFirstName: { contains: search, mode: 'insensitive' } },
             { patientLastName: { contains: search, mode: 'insensitive' } },
-            { user: { account: { contains: search, mode: 'insensitive' } } },
+            { user: { email: { contains: search, mode: 'insensitive' } } },
           ],
         }
         : {}),
@@ -117,7 +118,7 @@ export async function GET(req: NextRequest) {
           updatedAt: true,
           user: {
             select: {
-              account: true,
+              email: true,
               role: true,
               createdAt: true,
             },
@@ -167,6 +168,10 @@ export async function GET(req: NextRequest) {
       const { sessionResults, ...rest } = patient;
       return {
         ...rest,
+        user: {
+          ...rest.user,
+          account: rest.user.email.replace('@local.internal', ''),
+        },
         recentSessions: sessionResults
           .filter((sr) => sr.sessionCategoryResult !== null)
           .map((sr) => ({
@@ -203,15 +208,18 @@ export async function GET(req: NextRequest) {
 // Creates a new patient user (therapist-only).
 // ==========================================
 export async function POST(req: NextRequest) {
+  let createdUserId: string | undefined;
+
   try {
-    const cookieStore = await cookies();
-    const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
 
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
     }
 
-    if (session.role !== 'THERAPIST') {
+    if (session.user.role !== 'THERAPIST') {
       return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
     }
 
@@ -285,7 +293,7 @@ export async function POST(req: NextRequest) {
     }
 
     const existingUser = await prisma.user.findFirst({
-      where: { account },
+      where: { email: `${account}@local.internal` },
     });
 
     if (existingUser) {
@@ -295,48 +303,65 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({
-        data: {
-          account,
-          password,
-          role: 'PATIENT',
-        },
-      });
+    const userResult = await auth.api.createUser({
+      body: {
+        name: account,
+        email: getEmail(account),
+        password,
+      },
+      headers: await headers(),
+    });
+    createdUserId = userResult.user.id;
 
-      const patient = await tx.patient.create({
-        data: {
-          userId: user.userId,
-          patientFirstName,
-          patientLastName,
-          gender,
-          dateOfBirth,
-          occupation,
-          province,
-          note,
-          caregiverFirstName,
-          caregiverLastName,
-          caregiverRelationship,
-          caregiverTelephone,
-          familyStatus,
-          householdMembersCount,
-          childrenCount,
-          postcode,
-        },
-      });
-
-      return { user, patient };
+    const patient = await prisma.patient.create({
+      data: {
+        userId: createdUserId,
+        patientFirstName,
+        patientLastName,
+        gender,
+        dateOfBirth,
+        occupation,
+        province,
+        note,
+        caregiverFirstName,
+        caregiverLastName,
+        caregiverRelationship,
+        caregiverTelephone,
+        familyStatus,
+        householdMembersCount,
+        childrenCount,
+        postcode,
+      },
     });
 
     return NextResponse.json(
       {
         message: 'Patient user created successfully.',
-        user: result.user,
-        patient: result.patient,
+        user: {
+          userId: userResult.user.id,
+          account,
+          role: userResult.user.role,
+          createdAt: userResult.user.createdAt,
+          updatedAt: userResult.user.updatedAt,
+        },
+        patient: {
+          ...patient,
+          user: {
+            account,
+            role: userResult.user.role,
+            createdAt: userResult.user.createdAt,
+          },
+        },
       },
       { status: 201 }
     );
   } catch (error) {
+    if (createdUserId) {
+      await prisma.user.delete({ where: { id: createdUserId } }).catch((cleanupError) => {
+        console.error('Failed to clean up patient auth user:', cleanupError);
+      });
+    }
+
     console.error('Failed to create patient user:', error);
     return NextResponse.json(
       { error: 'Unable to create patient user.' },

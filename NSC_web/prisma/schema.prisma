@@ -463,3 +463,11 @@ model Verification {
   @@index([identifier])
   @@map("verification")
 }
+
+model AllowedGoogleEmail {
+  id        String   @id
+  email     String   @unique
+  disabled  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

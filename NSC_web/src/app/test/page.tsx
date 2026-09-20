@@ -9,7 +9,9 @@ export default function Test() {
   useEffect(() => {
     void authClient.signIn.social({
       provider: "google",
+      callbackURL: "/therapist/dashboard"
     });
+    
   }, []);
 
   return null;

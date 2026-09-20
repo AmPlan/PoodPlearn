@@ -29,8 +29,7 @@ export async function POST(req: NextRequest) {
       },
       headers: await headers(),
     });
-
-
+    
     return NextResponse.json(data);
   } catch (error: any) {
       return handleAuthError(error, "Failed to sign up");

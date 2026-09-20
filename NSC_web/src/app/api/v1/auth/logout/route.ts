@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 
-import { AUTH_COOKIE_NAME } from '@/lib/oldAuth';
+import { auth, handleAuthError } from '@/lib/auth';
 
 export async function POST() {
-  const response = NextResponse.json({ ok: true });
-  response.cookies.set(AUTH_COOKIE_NAME, '', {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: 0,
-  });
+  try {
+    await auth.api.signOut({
+      headers: await headers(),
+    });
 
-  return response;
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return handleAuthError(error, 'Unable to log out');
+  }
 }
