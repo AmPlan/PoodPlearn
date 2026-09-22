@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 
 import { auth, handleAuthError } from '@/lib/auth';
 
+// Log out
 export async function POST() {
   try {
     await auth.api.signOut({

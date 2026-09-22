@@ -2,10 +2,10 @@ import { betterAuth } from "better-auth/minimal";
 import { username, admin } from "better-auth/plugins";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./prisma";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { nextCookies } from "better-auth/next-js";
 
-export const emailDomain = "@local.internal";
+import { headers } from 'next/headers';
 
 export const auth = betterAuth({
   databaseHooks: {
@@ -88,10 +88,6 @@ export const auth = betterAuth({
   },
 });
 
-export function getEmail(account: string): string {
-  return account + emailDomain;
-}
-
 export function handleAuthError(error: unknown, fallbackMessage = "Authentication failed") {
   const status = typeof (error as any)?.statusCode === "number" ? (error as any).statusCode : 500;
 
@@ -101,4 +97,24 @@ export function handleAuthError(error: unknown, fallbackMessage = "Authenticatio
   console.log(fallbackMessage + ": " + message);
 
   return NextResponse.json({ error: message.replaceAll("email", "account") }, { status });
+}
+
+export function withAuth(
+  allowedRoles: string[],
+  handler: (req: NextRequest, session: typeof auth.$Infer.Session) => Promise<NextResponse>
+) {
+  return async (req: NextRequest) => {
+    const session = await auth.api.getSession({ headers: await headers() });
+
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+    }
+
+    if (!allowedRoles.includes(session.user.role || "") && session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
+    }
+
+    // Pass the valid session to the actual route handler
+    return handler(req, session);
+  };
 }

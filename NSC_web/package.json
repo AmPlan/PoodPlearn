@@ -7,6 +7,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
+    "api:docs": "openapi-gen generate",
     "auth:generate": "npx @better-auth/cli generate",
     "auth:create-admin": "auth create-admin --config src/lib/auth.ts",
     "lint": "oxlint",

@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 
 import { auth, handleAuthError } from '@/lib/auth';
 
+// Get current session
 export async function GET() {
   try {
     const session = await auth.api.getSession({

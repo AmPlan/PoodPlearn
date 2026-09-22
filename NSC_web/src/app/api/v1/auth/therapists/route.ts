@@ -1,33 +1,17 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-import { headers } from "next/headers";
-
-import { auth } from "@/lib/auth";
+import { withAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isValidEmail } from "@/lib/shared/utils/emailUtils";
 
 type CreateTherapistBody = {
   allowGoogleEmail?: string;
 };
 
-function isValidEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
 
-export async function POST(req: NextRequest) {
+// Create Therapist
+export const POST = withAuth([], async(req, _session) => {
   try {
-    // TODO Temp
-    //const session = await auth.api.getSession({
-    //  headers: await headers(),
-    //});
-//
-    //if (!session) {
-    //  return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-    //}
-//
-    //if (String(session.user.role).toUpperCase() !== "ADMIN") {
-    //  return NextResponse.json({ error: "Forbidden." }, { status: 403 });
-    //}
-
     const body = (await req.json()) as CreateTherapistBody;
     const allowGoogleEmail = body.allowGoogleEmail?.trim().toLowerCase() ?? "";
 
@@ -66,4 +50,5 @@ export async function POST(req: NextRequest) {
     console.error("Failed to allow therapist Google email:", error);
     return NextResponse.json({ error: "Unable to allow therapist Google email." }, { status: 500 });
   }
-}
+
+})

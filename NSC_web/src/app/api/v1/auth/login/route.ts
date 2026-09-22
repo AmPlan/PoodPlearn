@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { auth, getEmail, handleAuthError } from '@/lib/auth';
+import { auth, handleAuthError } from '@/lib/auth';
 import { headers } from 'next/headers';
+import { getEmail } from '@/lib/shared/utils/emailUtils';
 
 type LoginBody = {
   account: string;
   password: string;
 };
 
+// Log in Patient
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as LoginBody;

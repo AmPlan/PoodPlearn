@@ -21,6 +21,7 @@
       }
     ],
     "paths": {
+      "@/server/*": ["./src/lib/server/*"],
       "@/*": ["./src/*"]
     }
   },
