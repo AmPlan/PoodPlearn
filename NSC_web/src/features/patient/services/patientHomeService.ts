@@ -20,7 +20,7 @@ type PatientHomeApiResponse = {
 };
 
 export async function getPatientHomeData(
-  userId: number,
+  userId: string,
 ): Promise<PatientHomeResult> {
   
   const response = await fetch(`/api/v1/patients/home?userId=${userId}`, {

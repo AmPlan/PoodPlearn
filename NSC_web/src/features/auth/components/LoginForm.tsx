@@ -3,8 +3,11 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { FormEvent, useId, useState } from "react";
-import { loginWithAccessCode } from "../services/authService";
+import { createAuthClient } from "better-auth/client";
+import { loginWithCredentials } from "../services/authService";
 import { saveAuthSession } from "../services/authSession";
+
+const authClient = createAuthClient();
 
 function BrandMark() {
 	return (
@@ -158,9 +161,12 @@ function LeafAccent({ side }: { side: "left" | "right" }) {
 export function LoginForm() {
 	const router = useRouter();
 	const inputId = useId();
+	const passwordId = useId();
 	const errorId = useId();
 	const [accessCode, setAccessCode] = useState("");
+	const [password, setPassword] = useState("");
 	const [errorMessage, setErrorMessage] = useState("");
+	const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 	const submitButtonLabel = accessCode.trim().toUpperCase().startsWith("P-")
 		? "เข้าเริ่มฝึก"
 		: "เข้าใช้งาน";
@@ -173,7 +179,11 @@ export function LoginForm() {
 		const submittedAccessCode = String(
 			formData.get("accessCode") ?? accessCode,
 		);
-		const result = await loginWithAccessCode(submittedAccessCode);
+		const submittedPassword = String(formData.get("password") ?? password);
+		const result = await loginWithCredentials(
+			submittedAccessCode,
+			submittedPassword,
+		);
 
 		if (!result.success) {
 			setErrorMessage(result.errorMessage);
@@ -182,6 +192,29 @@ export function LoginForm() {
 
 		saveAuthSession(result.user);
 		router.push(result.redirectPath);
+	}
+
+	async function handleGoogleLogin() {
+		setErrorMessage("");
+		setIsGoogleLoading(true);
+
+		try {
+			const result = await authClient.signIn.social({
+				provider: "google",
+				callbackURL: "/therapist/dashboard",
+			});
+
+			if (result.error) {
+				setErrorMessage(
+					result.error.message ?? "ไม่สามารถเข้าสู่ระบบด้วย Google ได้",
+				);
+				setIsGoogleLoading(false);
+			}
+		} catch (error) {
+			console.error("Failed to start Google login:", error);
+			setErrorMessage("ไม่สามารถเข้าสู่ระบบด้วย Google ได้ กรุณาลองใหม่อีกครั้ง");
+			setIsGoogleLoading(false);
+		}
 	}
 
 	return (
@@ -237,7 +270,7 @@ export function LoginForm() {
 									{submitButtonLabel}
 								</h2>
 								<p className="mt-2 text-base font-medium leading-6 text-[#4f5865] sm:mt-3 sm:text-[1.15rem] sm:leading-7">
-									กรอกรหัสเข้าใช้งานตามบทบาทของคุณ
+									กรอกรหัสผู้ใช้งานและรหัสผ่านของคุณ
 								</p>
 							</div>
 
@@ -250,7 +283,7 @@ export function LoginForm() {
 									className="mb-2 block text-base font-bold leading-6 text-[#118a82] sm:mb-3 sm:text-[1.08rem]"
 									htmlFor={inputId}
 								>
-									รหัสเข้าใช้งานผู้รับบริการ / Therapist Code
+									รหัสผู้ใช้งานผู้รับบริการ / Therapist Code
 								</label>
 
 								<div className="flex h-14 items-center gap-3 rounded-xl border border-[#c8d5dc] bg-white px-4 shadow-[0_8px_20px_rgba(39,92,98,0.06)] transition focus-within:border-[#118a82] focus-within:ring-4 focus-within:ring-[#118a82]/15 sm:h-16 sm:gap-4 sm:px-6 lg:h-20">
@@ -276,6 +309,34 @@ export function LoginForm() {
 									/>
 								</div>
 
+								<label
+									className="mb-2 mt-4 block text-base font-bold leading-6 text-[#118a82] sm:mb-3 sm:mt-6 sm:text-[1.08rem]"
+									htmlFor={passwordId}
+								>
+									รหัสผ่าน
+								</label>
+
+								<div className="flex h-14 items-center gap-3 rounded-xl border border-[#c8d5dc] bg-white px-4 shadow-[0_8px_20px_rgba(39,92,98,0.06)] transition focus-within:border-[#118a82] focus-within:ring-4 focus-within:ring-[#118a82]/15 sm:h-16 sm:gap-4 sm:px-6 lg:h-20">
+									<LockIcon />
+									<input
+										id={passwordId}
+										className="h-full min-w-0 flex-1 bg-transparent text-base font-semibold tracking-normal text-[#173d3f] outline-none placeholder:text-[#8d949d] sm:text-[1.2rem]"
+										type="password"
+										name="password"
+										autoComplete="current-password"
+										placeholder="กรอกรหัสผ่าน"
+										value={password}
+										onChange={(event) => {
+											setPassword(event.target.value);
+											if (errorMessage) {
+												setErrorMessage("");
+											}
+										}}
+										aria-invalid={Boolean(errorMessage)}
+										aria-describedby={errorMessage ? errorId : undefined}
+									/>
+								</div>
+
 								{errorMessage ? (
 									<p
 										id={errorId}
@@ -291,21 +352,51 @@ export function LoginForm() {
 										<InfoIcon />
 										<div>
 											<p className="text-base font-bold text-[#118a82] sm:text-[1.08rem]">
-												ตัวอย่างรหัสเข้าใช้งาน
+												ข้อมูลการเข้าสู่ระบบ
 											</p>
 											<ul className="mt-1 list-disc space-y-1 pl-6 text-sm font-medium leading-6 sm:mt-2 sm:text-[1.05rem] sm:leading-7">
-												<li>ผู้รับบริการ: เช่น P-194291, P-516550</li>
-												<li>นักแก้ไขการพูด: เช่น TH001</li>
+												<li>ผู้รับบริการ: ใช้รหัสผู้ใช้งานและรหัสผ่านที่ได้รับ</li>
+												<li>นักแก้ไขการพูด: ใช้รหัส Therapist หรือ Google</li>
 											</ul>
 										</div>
 									</div>
 								</div>
 
-								<button className="mt-5 flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-[linear-gradient(180deg,#139f94_0%,#0d847b_100%)] px-6 text-lg font-bold text-white shadow-[0_16px_30px_rgba(17,138,130,0.28)] outline-none transition hover:shadow-[0_20px_38px_rgba(17,138,130,0.32)] focus:ring-4 focus:ring-[#118a82]/25 disabled:cursor-not-allowed disabled:opacity-70 disabled:shadow-none sm:mt-8 sm:h-16 sm:gap-4 sm:text-[1.45rem] lg:mt-9 lg:h-20">
+								<button
+									type="submit"
+									disabled={isGoogleLoading}
+									className="mt-5 flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-[linear-gradient(180deg,#139f94_0%,#0d847b_100%)] px-6 text-lg font-bold text-white shadow-[0_16px_30px_rgba(17,138,130,0.28)] outline-none transition hover:shadow-[0_20px_38px_rgba(17,138,130,0.32)] focus:ring-4 focus:ring-[#118a82]/25 disabled:cursor-not-allowed disabled:opacity-70 disabled:shadow-none sm:mt-8 sm:h-16 sm:gap-4 sm:text-[1.45rem] lg:mt-9 lg:h-20"
+								>
 									<LoginIcon />
 									เข้าสู่ระบบ
 								</button>
 							</form>
+
+							<div className="relative mt-5 sm:mt-7">
+								<div className="absolute inset-0 flex items-center">
+									<div className="w-full border-t border-[#d7e2e5]" />
+								</div>
+								<div className="relative flex justify-center">
+									<span className="bg-white px-4 text-sm font-medium text-[#7b848d]">
+										หรือ
+									</span>
+								</div>
+							</div>
+
+							<button
+								type="button"
+								onClick={handleGoogleLogin}
+								disabled={isGoogleLoading}
+								className="mt-4 flex h-14 w-full items-center justify-center gap-3 rounded-xl border border-[#c8d5dc] bg-white px-6 text-base font-bold text-[#37424d] shadow-[0_8px_20px_rgba(39,92,98,0.06)] outline-none transition hover:bg-[#f7fbfb] focus:ring-4 focus:ring-[#118a82]/15 disabled:cursor-not-allowed disabled:opacity-70 sm:h-16 sm:text-[1.15rem]"
+							>
+								<svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24">
+									<path fill="#4285F4" d="M21.35 12.23c0-.79-.07-1.55-.22-2.27H12v4.3h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.7 2.91-4.2 2.91-7.42Z" />
+									<path fill="#34A853" d="M12 21.5c2.63 0 4.84-.87 6.45-2.35l-3.14-2.45c-.87.58-1.98.93-3.31.93-2.54 0-4.69-1.72-5.46-4.03H3.29v2.53A9.74 9.74 0 0 0 12 21.5Z" />
+									<path fill="#FBBC05" d="M6.54 13.6A5.86 5.86 0 0 1 6.23 12c0-.56.11-1.1.31-1.6V7.87H3.29A9.75 9.75 0 0 0 2.25 12c0 1.57.38 3.05 1.04 4.13l3.25-2.53Z" />
+									<path fill="#EA4335" d="M12 6.37c1.43 0 2.71.49 3.72 1.45l2.79-2.79C16.84 3.46 14.63 2.5 12 2.5a9.74 9.74 0 0 0-8.71 5.37l3.25 2.53C7.31 8.09 9.46 6.37 12 6.37Z" />
+								</svg>
+								{isGoogleLoading ? "กำลังเชื่อมต่อ Google..." : "เข้าสู่ระบบด้วย Google"}
+							</button>
 
 							<div className="mt-5 flex items-center justify-center gap-3 text-center text-[0.9rem] font-medium leading-6 text-[#7b848d] sm:mt-10 sm:text-[0.98rem] lg:mt-16">
 								<ShieldIcon />

@@ -1,7 +1,7 @@
 import {  NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 
-import { auth, withAuth } from '@/lib/auth';
+import { auth, handleAuthError, withAuth } from '@/lib/auth';
 import { Prisma, prisma } from '@/lib/prisma';
 import { emailDomain, getEmail } from '@/lib/shared/utils/emailUtils';
 import { ACCOUNT_REGEX, isValidGender } from '@/lib/shared/utils/patientDataUtils';
@@ -328,7 +328,7 @@ export const POST = withAuth(["THERAPIST"], async(req, _session) => {
       );
     }
 
-    const userResult = await auth.api.createUser({
+    const userResult = await auth.api.signUpEmail({
       body: {
         name: patientInput.account,
         email: getEmail(patientInput.account),
@@ -387,7 +387,6 @@ export const POST = withAuth(["THERAPIST"], async(req, _session) => {
       });
     }
 
-    console.error('Failed to create patient user:', error);
-    return NextResponse.json({ error: 'Unable to create patient user.' }, { status: 500 });
+    return handleAuthError(error, "Unable to create patient user.");
   }
 })

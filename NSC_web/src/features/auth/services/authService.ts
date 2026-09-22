@@ -9,68 +9,94 @@ const redirectPathByRole: Record<AuthRole, string> = {
 };
 
 type LoginApiResponse = {
-  userId: number;
+  userId: string;
   account: string;
   role: string;
   patientId?: number | null;
   therapistId?: number | null;
 };
 
-function normalizeRole(role: string): AuthRole {
-  return role.toLowerCase() === "therapist" ? "therapist" : "patient";
+function normalizeRole(role: unknown): AuthRole | null {
+  if (typeof role !== "string") {
+    return null;
+  }
+
+  const normalizedRole = role.toLowerCase();
+  return normalizedRole === "therapist"
+    ? "therapist"
+    : normalizedRole === "patient"
+      ? "patient"
+      : null;
 }
 
-export async function loginWithAccessCode(
-  accessCode: string,
+export async function loginWithCredentials(
+  account: string,
+  password: string,
 ): Promise<LoginResult> {
-  const normalizedCode = accessCode.trim();
+  const normalizedAccount = account.trim();
 
-  if (!normalizedCode) {
+  if (!normalizedAccount || !password) {
     return {
       success: false,
-      errorMessage: INVALID_ACCESS_CODE_MESSAGE,
+      errorMessage: "กรุณากรอกรหัสผู้ใช้งานและรหัสผ่าน",
     };
   }
 
-  const response = await fetch("/api/v1/auth/login", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      account: normalizedCode,
-      password: normalizedCode,
-    }),
-  });
+  try {
+    const response = await fetch("/api/v1/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        account: normalizedAccount,
+        password,
+      }),
+    });
 
-  const data = (await response.json().catch(() => null)) as
-    | LoginApiResponse
-    | { error?: string }
-    | null;
+    const data = (await response.json().catch(() => null)) as
+      | LoginApiResponse
+      | { error?: string }
+      | null;
 
-  if (!response.ok || !data || "error" in data) {
+    if (!response.ok || !data || "error" in data) {
+      return {
+        success: false,
+        errorMessage: data && "error" in data && data.error
+          ? data.error
+          : INVALID_ACCESS_CODE_MESSAGE,
+      };
+    }
+    const successData = data as LoginApiResponse;
+
+    const role = normalizeRole(successData.role);
+
+    if (!role) {
+      console.error("Login response contained an invalid role:", successData.role);
+      return {
+        success: false,
+        errorMessage: "ไม่พบข้อมูลบทบาทผู้ใช้งาน กรุณาติดต่อผู้ดูแลระบบ",
+      };
+    }
+
     return {
-      success: false,
-      errorMessage: data && "error" in data && data.error
-        ? data.error
-        : INVALID_ACCESS_CODE_MESSAGE,
-    };
-  }
-  const successData = data as LoginApiResponse;
-
-  const role = normalizeRole(successData.role);
-
-  return {
-    success: true,
-    role,
-    user: {
-      id: successData.userId,
-      accessCode: successData.account,
+      success: true,
       role,
-      displayName: successData.account,
-      patientId: successData.patientId ?? null,
-      therapistId: successData.therapistId ?? null,
-    },
-    redirectPath: redirectPathByRole[role],
-  };
+      user: {
+        id: successData.userId,
+        accessCode: successData.account,
+        role,
+        displayName: successData.account,
+        patientId: successData.patientId ?? null,
+        therapistId: successData.therapistId ?? null,
+      },
+      redirectPath: redirectPathByRole[role],
+    };
+  } catch (error) {
+    console.error("Failed to log in:", error);
+    return {
+      success: false,
+      errorMessage: "ไม่สามารถเชื่อมต่อระบบเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง",
+    };
+  }
 }

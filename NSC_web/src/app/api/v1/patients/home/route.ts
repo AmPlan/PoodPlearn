@@ -1,7 +1,7 @@
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
-import { AUTH_COOKIE_NAME, verifySession } from "@/lib/oldAuth";
+import { auth } from "@/lib/auth";
 import { getBaseUrl } from "@/lib/baseUrl";
 import { addDays, startOfDay } from "@/lib/daily-plan/date-utils";
 import { prisma } from "@/lib/prisma";
@@ -103,8 +103,7 @@ async function checkHasFinishedAssessment(baseUrl: string, patientId: number) {
 
 export async function GET(req: NextRequest) {
 	try {
-		const cookieStore = await cookies();
-		const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
+		const session = await auth.api.getSession({ headers: await headers() });
 
 		if (!session) {
 			return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
@@ -112,13 +111,13 @@ export async function GET(req: NextRequest) {
 
 		const rawUserId = req.nextUrl.searchParams.get("userId");
 		const targetUserId =
-			rawUserId === null ? session.userId : Number(rawUserId);
+			rawUserId === null ? session.user.id : rawUserId;
 
-		if (!Number.isInteger(targetUserId) || targetUserId <= 0) {
+		if (!targetUserId.trim()) {
 			return NextResponse.json({ error: "Invalid userId." }, { status: 400 });
 		}
 
-		if (session.role !== "THERAPIST" && session.userId !== targetUserId) {
+		if (session.user.role !== "THERAPIST" && session.user.id !== targetUserId) {
 			return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 		}
 

@@ -1,7 +1,7 @@
 export type AuthRole = "patient" | "therapist";
 
 export type AuthUser = {
-  id: number;
+  id: string;
   accessCode: string;
   role: AuthRole;
   displayName: string;
