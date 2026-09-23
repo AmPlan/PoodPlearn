@@ -1,19 +1,11 @@
-import { headers } from "next/headers";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-import { auth } from "@/lib/auth";
-import { getBaseUrl } from "@/lib/baseUrl";
+import { withAuth } from "@/lib/auth";
 import { addDays, startOfDay } from "@/lib/daily-plan/date-utils";
 import { prisma } from "@/lib/prisma";
+import { formatLocalDateKey, THAI_WEEKDAY_LABELS } from "@/server/utils/dateUtils";
+import { hasFinishedAssessment } from "@/server/utils/assessmentsUtils";
 
-const THAI_WEEKDAY_LABELS = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
-
-function formatLocalDateKey(date: Date) {
-	const year = date.getFullYear();
-	const month = String(date.getMonth() + 1).padStart(2, "0");
-	const day = String(date.getDate()).padStart(2, "0");
-	return `${year}-${month}-${day}`;
-}
 
 async function buildWeekStreak(patientId: number) {
 	const today = startOfDay(new Date());
@@ -61,7 +53,7 @@ async function buildWeekStreak(patientId: number) {
 
 async function checkHasFinishedTodayPlan(patientId: number) {
 	const targetDate = startOfDay(new Date());
-	console.log(targetDate);
+	
 	const sessionsStatus = await prisma.dailyPlanSchedule.findMany({
 		where: { patientId, scheduledDate: targetDate },
 		orderBy: { sessionId: "desc" },
@@ -77,49 +69,12 @@ async function checkHasFinishedTodayPlan(patientId: number) {
 	return isFinished;
 }
 
-async function checkHasFinishedAssessment(baseUrl: string, patientId: number) {
-	const response = await fetch(
-		`${baseUrl}/api/v1/assessments/has-finished?patientId=${patientId}`,
-		{
-			method: "GET",
-			headers: {
-				"Content-Type": "application/json",
-				"x-internal-api-key": process.env.INTERNAL_API_SECRET!,
-			},
-			cache: "no-store",
-		},
-	);
-
-	if (!response.ok) {
-		return false;
-	}
-
-	const payload = (await response.json()) as {
-		hasFinishedAssessment?: boolean;
-	};
-
-	return payload.hasFinishedAssessment;
-}
-
-export async function GET(req: NextRequest) {
+export const GET = withAuth(["PATIENT"], async (req, session) => {
 	try {
-		const session = await auth.api.getSession({ headers: await headers() });
 
-		if (!session) {
-			return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-		}
 
 		const rawUserId = req.nextUrl.searchParams.get("userId");
-		const targetUserId =
-			rawUserId === null ? session.user.id : rawUserId;
-
-		if (!targetUserId.trim()) {
-			return NextResponse.json({ error: "Invalid userId." }, { status: 400 });
-		}
-
-		if (session.user.role !== "THERAPIST" && session.user.id !== targetUserId) {
-			return NextResponse.json({ error: "Forbidden." }, { status: 403 });
-		}
+		const targetUserId = rawUserId === null ? session.user.id : rawUserId;
 
 		const patient = await prisma.patient.findFirst({
 			where: { userId: targetUserId },
@@ -139,17 +94,14 @@ export async function GET(req: NextRequest) {
 
 		const weekStreak = await buildWeekStreak(patient.patientId);
 
-		const hasFinishedAssessment = await checkHasFinishedAssessment(
-			getBaseUrl(),
-			patient.patientId,
-		);
-
 		let nextAction = {
 			type: "needs_standard_assessment",
 			targetPath: "/patient/assessment/session",
 		};
 
-		if (hasFinishedAssessment) {
+		const finishedAssessment = await hasFinishedAssessment(patient.patientId)
+
+		if (finishedAssessment) {
 			const hasFinishedTodayPlan = await checkHasFinishedTodayPlan(
 				patient.patientId,
 			);
@@ -185,3 +137,5 @@ export async function GET(req: NextRequest) {
 		);
 	}
 }
+
+)

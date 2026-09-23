@@ -347,21 +347,6 @@ export function LoginForm() {
 									</p>
 								) : null}
 
-								<div className="mt-4 rounded-xl border border-[#b7e0df] bg-[linear-gradient(135deg,#f5ffff_0%,#eefbfa_100%)] px-4 py-3 text-[#37424d] shadow-[0_10px_22px_rgba(39,92,98,0.04)] sm:mt-7 sm:px-6 sm:py-5">
-									<div className="flex items-start gap-3 sm:gap-4">
-										<InfoIcon />
-										<div>
-											<p className="text-base font-bold text-[#118a82] sm:text-[1.08rem]">
-												ข้อมูลการเข้าสู่ระบบ
-											</p>
-											<ul className="mt-1 list-disc space-y-1 pl-6 text-sm font-medium leading-6 sm:mt-2 sm:text-[1.05rem] sm:leading-7">
-												<li>ผู้รับบริการ: ใช้รหัสผู้ใช้งานและรหัสผ่านที่ได้รับ</li>
-												<li>นักแก้ไขการพูด: ใช้รหัส Therapist หรือ Google</li>
-											</ul>
-										</div>
-									</div>
-								</div>
-
 								<button
 									type="submit"
 									disabled={isGoogleLoading}
