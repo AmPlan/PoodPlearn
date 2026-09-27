@@ -1,71 +1,55 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 import { AUTH_COOKIE_NAME, verifySession } from '@/lib/oldAuth';
 import { resolveAssessmentCategories } from '@/lib/assessmentCategories';
 import { prisma } from '@/lib/prisma';
+import { withAuth } from '@/lib/auth';
+import { checkPatientPermission } from '@/server/utils/patientUtils';
+import { z } from 'zod';
+
 
 type CreateAssessmentBody = {
   patientId?: number;
   setId?: number;
 };
 
-export async function GET(req: NextRequest) {
+const getQuerySchema = z.object({
+  patientId: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().max(100).default(10),
+});
+
+export const GET = withAuth(["PATIENT", "THERAPIST"], async (req, session) => {
   try {
-    const cookieStore = await cookies();
-    const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
+    const parsed = getQuerySchema.safeParse(
+      Object.fromEntries(new URL(req.url).searchParams)
+    );
 
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(req.url);
-
-    const patientIdParam = searchParams.get('patientId');
-    const patientId = patientIdParam ? Number(patientIdParam) : undefined;
-
-    if (patientIdParam && Number.isNaN(patientId)) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'patientId must be a number.' },
+        { error: parsed.error.issues[0]?.message ?? 'Invalid query parameters.' },
         { status: 400 }
       );
     }
 
-    const limitParam = searchParams.get('limit');
-    let limit = 10;
+    const { patientId, limit } = parsed.data;
 
-    if (limitParam) {
-      const parsedLimit = Number(limitParam);
-
-      if (Number.isNaN(parsedLimit) || parsedLimit <= 0) {
-        return NextResponse.json(
-          { error: 'limit must be a positive number.' },
-          { status: 400 }
-        );
+    if (patientId) {
+      const permissionError = await checkPatientPermission(session, patientId);
+      if (permissionError instanceof NextResponse) {
+        return permissionError;
       }
-
-      limit = Math.min(parsedLimit, 100);
+    } else if (!["THERAPIST", "ADMIN"].includes(session.user.role ?? "")) {
+      return NextResponse.json(
+        { error: 'patientId is required.' },
+        { status: 400 }
+      );
     }
-
-    if (session.role !== 'THERAPIST') {
-      if (patientId && patientId !== session.patientId) {
-        return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
-      }
-    }
-
-    const effectivePatientId =
-      session.role === 'THERAPIST'
-        ? patientId
-        : session.patientId;
 
     const assessments = await prisma.assessmentResult.findMany({
       where: {
-        ...(effectivePatientId
-          ? { patientId: effectivePatientId }
-          : {}),
-        endedAt: {
-          not: null,
-        },
+        ...(patientId && { patientId }),
+        endedAt: { not: null },
       },
       include: {
         trainingSet: true,
@@ -83,30 +67,24 @@ export async function GET(req: NextRequest) {
           },
         },
       },
-      orderBy: {
-        endedAt: 'desc',
-      },
+      orderBy: { endedAt: 'desc' },
       take: limit,
     });
 
     return NextResponse.json(
-      {
-        message: 'Assessments fetched successfully.',
-        data: assessments,
-      },
+      { message: 'Assessments fetched successfully.', data: assessments },
       { status: 200 }
     );
   } catch (error) {
     console.error('Failed to fetch assessments:', error);
-
     return NextResponse.json(
       { error: 'Unable to fetch assessments.' },
       { status: 500 }
     );
   }
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(["PATIENT"], async (req, _session) => {
   try {
     const cookieStore = await cookies();
     const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
@@ -189,4 +167,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+})

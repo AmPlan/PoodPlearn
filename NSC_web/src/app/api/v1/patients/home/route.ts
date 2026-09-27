@@ -5,6 +5,7 @@ import { addDays, startOfDay } from "@/lib/daily-plan/date-utils";
 import { prisma } from "@/lib/prisma";
 import { formatLocalDateKey, THAI_WEEKDAY_LABELS } from "@/server/utils/dateUtils";
 import { hasFinishedAssessment } from "@/server/utils/assessmentsUtils";
+import { getPatient } from "@/server/utils/patientUtils";
 
 
 async function buildWeekStreak(patientId: number) {
@@ -69,27 +70,15 @@ async function checkHasFinishedTodayPlan(patientId: number) {
 	return isFinished;
 }
 
-export const GET = withAuth(["PATIENT"], async (req, session) => {
+export const GET = withAuth(["PATIENT", "THERAPIST"], async (req, session) => {
 	try {
-
-
 		const rawUserId = req.nextUrl.searchParams.get("userId");
 		const targetUserId = rawUserId === null ? session.user.id : rawUserId;
 
-		const patient = await prisma.patient.findFirst({
-			where: { userId: targetUserId },
-			select: {
-				patientId: true,
-				patientFirstName: true,
-				patientLastName: true,
-			},
-		});
+		const patient = await getPatient(targetUserId, session);
 
-		if (!patient) {
-			return NextResponse.json(
-				{ error: "Patient not found." },
-				{ status: 404 },
-			);
+		if (patient instanceof NextResponse)  {
+			return patient;
 		}
 
 		const weekStreak = await buildWeekStreak(patient.patientId);
