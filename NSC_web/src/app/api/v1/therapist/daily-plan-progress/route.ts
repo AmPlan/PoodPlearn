@@ -1,23 +1,11 @@
-import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
-import { AUTH_COOKIE_NAME, verifySession } from "@/lib/oldAuth";
 import { startOfDay } from "@/lib/daily-plan/date-utils";
 import { prisma } from "@/lib/prisma";
+import { withAuth } from "@/lib/auth";
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(["THERAPIST"], async (req: NextRequest) => {
 	try {
-		const cookieStore = await cookies();
-		const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
-
-		if (!session) {
-			return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-		}
-
-		if (session.role !== "THERAPIST") {
-			return NextResponse.json({ error: "Forbidden." }, { status: 403 });
-		}
-
 		const patientIds = (req.nextUrl.searchParams.get("patientIds") ?? "")
 			.split(",")
 			.map(Number)
@@ -29,7 +17,7 @@ export async function GET(req: NextRequest) {
 
 		const schedules = await prisma.dailyPlanSchedule.findMany({
 			where: {
-				patientId: { in: patientIds },
+				trainingPlan: { patientId: { in: patientIds } },
 				scheduledDate: startOfDay(new Date()),
 			},
 			select: { patientId: true, status: true },
@@ -61,4 +49,4 @@ export async function GET(req: NextRequest) {
 			{ status: 500 },
 		);
 	}
-}
+});

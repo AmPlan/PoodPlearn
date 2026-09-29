@@ -1,22 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 
-import { AUTH_COOKIE_NAME, verifySession } from '@/lib/oldAuth';
 import { prisma } from '@/lib/prisma';
+import { AuthSession, withAuth } from '@/lib/auth';
+import { checkPatientPermission } from '@/lib/server/utils/patientUtils';
 
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-export async function GET(_req: NextRequest, { params }: RouteContext) {
+export const GET = withAuth(['PATIENT', 'THERAPIST'], async (
+  _req: NextRequest,
+  session: AuthSession,
+  { params }: RouteContext
+) => {
   try {
-    const cookieStore = await cookies();
-    const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
-
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
-    }
-
     const { id } = await params;
     const sessionId = Number(id);
 
@@ -39,8 +36,9 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Session not found.' }, { status: 404 });
     }
 
-    if (session.role !== 'THERAPIST' && session.patientId !== sessionResult.patientId) {
-      return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
+    const permission = await checkPatientPermission(session, sessionResult.patientId);
+    if (permission !== true) {
+      return permission;
     }
 
     return NextResponse.json(
@@ -56,4 +54,4 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
     console.error('Failed to fetch session:', error);
     return NextResponse.json({ error: 'Unable to fetch session.' }, { status: 500 });
   }
-}
+});

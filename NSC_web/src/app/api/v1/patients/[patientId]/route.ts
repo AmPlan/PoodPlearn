@@ -1,8 +1,9 @@
-import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { AUTH_COOKIE_NAME, verifySession } from '@/lib/oldAuth';
 import { Prisma, prisma } from '@/lib/prisma';
+import { auth, AuthSession, withAuth } from '@/lib/auth';
+import { checkPatientPermission } from '@/lib/server/utils/patientUtils';
+import { getEmail } from '@/lib/shared/utils/emailUtils';
 
 type PatientRouteContext = {
   params: { patientId: string } | Promise<{ patientId: string }>;
@@ -28,7 +29,7 @@ type UpdatePatientBody = {
   postcode?: string | null;
 };
 
-const accountRegex = /^P-\d{6}$/;
+const accountRegex = /^HN\d{6}$/;
 
 function isValidGender(value: string | undefined): value is 'MALE' | 'FEMALE' | 'OTHER' {
   return value === 'MALE' || value === 'FEMALE' || value === 'OTHER';
@@ -60,8 +61,8 @@ async function getCurrentPatient(patientId: number) {
     include: {
       user: {
         select: {
-          userId: true,
-          account: true,
+          id: true,
+          email: true,
           role: true,
           createdAt: true,
           updatedAt: true,
@@ -70,8 +71,21 @@ async function getCurrentPatient(patientId: number) {
     },
   });
 }
-function canEditPatient(sessionPatientId: number | undefined, role: string, patientId: number) {
-  return role === 'THERAPIST' || sessionPatientId === patientId;
+
+function toPatientResponse<T extends { user: { id: string; email: string; role: string; createdAt: Date; updatedAt: Date } }>(
+  patient: T
+) {
+  const { user, ...patientData } = patient;
+  return {
+    ...patientData,
+    user: {
+      userId: user.id,
+      account: user.email.replace(/@local\.internal$/, ''),
+      role: user.role,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    },
+  };
 }
 
 async function getPatientWithRecentSessions(patientId: number) {
@@ -80,8 +94,8 @@ async function getPatientWithRecentSessions(patientId: number) {
 		include: {
 			user: {
 				select: {
-					userId: true,
-					account: true,
+					id: true,
+					email: true,
 					role: true,
 					createdAt: true,
 					updatedAt: true,
@@ -109,15 +123,12 @@ async function getPatientWithRecentSessions(patientId: number) {
 		},
   });
 }
-export async function GET(_req: NextRequest, context: PatientRouteContext) {
+export const GET = withAuth(['PATIENT', 'THERAPIST'], async (
+  _req: NextRequest,
+  session: AuthSession,
+  context: PatientRouteContext
+) => {
   try {
-    const cookieStore = await cookies();
-    const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
-
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
-    }
-
     const params = await context.params;
     const patientId = parsePatientId(params.patientId);
 
@@ -125,8 +136,9 @@ export async function GET(_req: NextRequest, context: PatientRouteContext) {
       return NextResponse.json({ error: 'Invalid patientId.' }, { status: 400 });
     }
 
-    if (!canEditPatient(session.patientId, session.role, patientId)) {
-      return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
+    const permission = await checkPatientPermission(session, patientId);
+    if (permission !== true) {
+      return permission;
     }
 
     const patient = await getPatientWithRecentSessions(patientId);
@@ -146,22 +158,24 @@ export async function GET(_req: NextRequest, context: PatientRouteContext) {
         })),
     };
 
-    return NextResponse.json({ patient: patientWithRecentSessions });
+    return NextResponse.json({
+      patient: {
+        ...toPatientResponse(patientWithRecentSessions),
+        recentSessions: patientWithRecentSessions.recentSessions,
+      },
+    });
   } catch (error) {
     console.error('Failed to load patient:', error);
     return NextResponse.json({ error: 'Unable to load patient.' }, { status: 500 });
   }
-}
+});
 
-export async function PATCH(req: NextRequest, context: PatientRouteContext) {
+export const PATCH = withAuth(['PATIENT', 'THERAPIST'], async (
+  req: NextRequest,
+  session: AuthSession,
+  context: PatientRouteContext
+) => {
   try {
-    const cookieStore = await cookies();
-    const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
-
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
-    }
-
     const params = await context.params;
     const patientId = parsePatientId(params.patientId);
 
@@ -175,14 +189,16 @@ export async function PATCH(req: NextRequest, context: PatientRouteContext) {
       return NextResponse.json({ error: 'Patient not found.' }, { status: 404 });
     }
 
-    if (!canEditPatient(session.patientId, session.role, patientId)) {
-      return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
+    const permission = await checkPatientPermission(session, patientId);
+    if (permission !== true) {
+      return permission;
     }
 
     const body = (await req.json()) as UpdatePatientBody;
 
-    const userData: Prisma.UserUpdateInput = {};
     const patientData: Prisma.PatientUpdateInput = {};
+    let updatedAccount: string | undefined;
+    let updatedPassword: string | undefined;
 
     if (body.account !== undefined) {
       const account = requireText(body.account, 'account');
@@ -197,9 +213,9 @@ export async function PATCH(req: NextRequest, context: PatientRouteContext) {
 
       const existingUser = await prisma.user.findFirst({
         where: {
-          account: account.value,
+          email: getEmail(account.value),
           NOT: {
-            userId: currentPatient.userId,
+            id: currentPatient.user.id,
           },
         },
       });
@@ -211,7 +227,7 @@ export async function PATCH(req: NextRequest, context: PatientRouteContext) {
         );
       }
 
-      userData.account = account.value;
+      updatedAccount = account.value;
     }
 
     if (body.password !== undefined) {
@@ -221,7 +237,7 @@ export async function PATCH(req: NextRequest, context: PatientRouteContext) {
         return NextResponse.json({ error: password.error }, { status: 400 });
       }
 
-      userData.password = password.value;
+      updatedPassword = password.value;
     }
 
     if (body.patientFirstName !== undefined) {
@@ -405,19 +421,77 @@ export async function PATCH(req: NextRequest, context: PatientRouteContext) {
       }
     }
 
-    if (Object.keys(userData).length === 0 && Object.keys(patientData).length === 0) {
+    if (
+      updatedAccount === undefined &&
+      updatedPassword === undefined &&
+      Object.keys(patientData).length === 0
+    ) {
       return NextResponse.json(
         { error: 'No patient fields were provided to update.' },
         { status: 400 }
       );
     }
 
+    if (updatedPassword !== undefined) {
+      const credentialAccount = await prisma.account.findFirst({
+        where: {
+          userId: currentPatient.user.id,
+          providerId: 'credential',
+        },
+        select: { id: true },
+      });
+
+      if (!credentialAccount) {
+        return NextResponse.json(
+          { error: 'This patient does not have a password-based account.' },
+          { status: 400 }
+        );
+      }
+    }
+
+    let passwordHash: string | undefined;
+    if (updatedPassword !== undefined) {
+      const authContext = await auth.$context;
+      const { minPasswordLength, maxPasswordLength } = authContext.password.config;
+
+      if (
+        updatedPassword.length < minPasswordLength ||
+        updatedPassword.length > maxPasswordLength
+      ) {
+        return NextResponse.json(
+          {
+            error: `Password must be between ${minPasswordLength} and ${maxPasswordLength} characters.`,
+          },
+          { status: 400 }
+        );
+      }
+
+      passwordHash = await authContext.password.hash(updatedPassword);
+    }
+
     const updatedPatient = await prisma.$transaction(async (tx) => {
-      if (Object.keys(userData).length > 0) {
+      if (updatedAccount !== undefined) {
         await tx.user.update({
-          where: { userId: currentPatient.userId },
-          data: userData,
+          where: { id: currentPatient.user.id },
+          data: {
+            email: getEmail(updatedAccount),
+            name: updatedAccount,
+          },
         });
+      }
+
+      if (passwordHash !== undefined) {
+        const result = await tx.account.updateMany({
+          where: {
+            userId: currentPatient.user.id,
+            providerId: 'credential',
+          },
+          data: { password: passwordHash },
+        });
+
+        if (result.count === 0) {
+          throw new Error('Patient credential account disappeared during update.');
+        }
       }
 
       if (Object.keys(patientData).length > 0) {
@@ -432,8 +506,8 @@ export async function PATCH(req: NextRequest, context: PatientRouteContext) {
         include: {
           user: {
             select: {
-              userId: true,
-              account: true,
+              id: true,
+              email: true,
               role: true,
               createdAt: true,
               updatedAt: true,
@@ -451,7 +525,7 @@ export async function PATCH(req: NextRequest, context: PatientRouteContext) {
     return NextResponse.json(
       {
         message: 'Patient updated successfully.',
-        patient: updatedPatient,
+        patient: updatedPatient ? toPatientResponse(updatedPatient) : null,
       },
       
       { status: 200 }
@@ -460,21 +534,14 @@ export async function PATCH(req: NextRequest, context: PatientRouteContext) {
     console.error('Failed to update patient:', error);
     return NextResponse.json({ error: 'Unable to update patient.' }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(_req: NextRequest, context: PatientRouteContext) {
+export const DELETE = withAuth(['THERAPIST'], async (
+  _req: NextRequest,
+  _session: AuthSession,
+  context: PatientRouteContext
+) => {
   try {
-    const cookieStore = await cookies();
-    const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
-
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
-    }
-
-    if (session.role !== 'THERAPIST') {
-      return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
-    }
-
     const params = await context.params;
     const patientId = parsePatientId(params.patientId);
 
@@ -489,7 +556,7 @@ export async function DELETE(_req: NextRequest, context: PatientRouteContext) {
     }
 
     await prisma.user.update({
-      where: { userId: currentPatient.userId },
+      where: { id: currentPatient.user.id },
       data: { deletedAt: new Date() },
     });
 
@@ -501,4 +568,4 @@ export async function DELETE(_req: NextRequest, context: PatientRouteContext) {
     console.error('Failed to delete patient:', error);
     return NextResponse.json({ error: 'Unable to delete patient.' }, { status: 500 });
   }
-}
+});

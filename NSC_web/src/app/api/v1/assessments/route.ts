@@ -1,7 +1,4 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-
-import { AUTH_COOKIE_NAME, verifySession } from '@/lib/oldAuth';
 import { resolveAssessmentCategories } from '@/lib/assessmentCategories';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
@@ -84,15 +81,8 @@ export const GET = withAuth(["PATIENT", "THERAPIST"], async (req, session) => {
   }
 });
 
-export const POST = withAuth(["PATIENT"], async (req, _session) => {
+export const POST = withAuth(["PATIENT", "THERAPIST"], async (req, session) => {
   try {
-    const cookieStore = await cookies();
-    const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
-
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
-    }
-
     const body = (await req.json()) as CreateAssessmentBody;
 
     if (!body.patientId || typeof body.patientId !== 'number') {
@@ -109,8 +99,9 @@ export const POST = withAuth(["PATIENT"], async (req, _session) => {
       );
     }
 
-    if (session.role !== 'THERAPIST' && session.patientId !== body.patientId) {
-      return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
+    const permission = await checkPatientPermission(session, body.patientId);
+    if (permission !== true) {
+      return permission;
     }
 
     const patient = await prisma.patient.findUnique({

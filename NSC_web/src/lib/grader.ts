@@ -18,8 +18,6 @@ export type VerifyOutput = {
   correctness: number;
   asrText?: string;
   answerBoolean?: boolean;
-  audioFileName?: string;
-  sttModel?: string;
 };
 
 export type SubmitInput = VerifyInput & {
@@ -176,7 +174,7 @@ export async function verifyAnswer(input: VerifyInput, patientId: number): Promi
       const asrResult = await resolveAsrText(input, expected.value);
       if (!asrResult) return { isCorrect: false, correctness: 0 };
       const result = await fuzzyGradeText(asrResult.text, expected.value);
-      return { ...result, asrText: asrResult.text, audioFileName: asrResult.fileName, sttModel: asrResult.modelUsed };
+      return { ...result, asrText: asrResult.text, };
     }
 
     case 'image': {

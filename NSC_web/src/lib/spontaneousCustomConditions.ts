@@ -1,4 +1,4 @@
-import { Gender, prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 // Initialize Prisma Client
 export type CustomCondition = "patientName" | "patientLastName" | "patientProvince";

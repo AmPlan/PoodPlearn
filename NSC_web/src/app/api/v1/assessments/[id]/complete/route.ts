@@ -1,23 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 
-import { AUTH_COOKIE_NAME, verifySession } from '@/lib/oldAuth';
-import { resolveAssessmentCategories, getRecommendedAssessmentExercise, getAssessmentCategoryKey, getAssessmentCategoryId } from '@/lib/assessmentCategories';
+import { resolveAssessmentCategories, getRecommendedAssessmentExercise, getAssessmentCategoryId } from '@/lib/assessmentCategories';
 import { prisma } from '@/lib/prisma';
+import { AuthSession, withAuth } from '@/lib/auth';
+import { checkPatientPermission } from '@/lib/server/utils/patientUtils';
 
 type CompleteAssessmentContext = {
   params: { id: string } | Promise<{ id: string }>;
 };
 
-export async function POST(_req: NextRequest, context: CompleteAssessmentContext) {
+export const POST = withAuth(['PATIENT', 'THERAPIST'], async (
+  _req: NextRequest,
+  session: AuthSession,
+  context: CompleteAssessmentContext
+) => {
   try {
-    const cookieStore = await cookies();
-    const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
-
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
-    }
-
     const params = await context.params;
     const assessmentResultId = Number(params.id);
 
@@ -40,8 +37,9 @@ export async function POST(_req: NextRequest, context: CompleteAssessmentContext
       );
     }
 
-    if (session.role !== 'THERAPIST' && session.patientId !== assessment.patientId) {
-      return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
+    const permission = await checkPatientPermission(session, assessment.patientId);
+    if (permission !== true) {
+      return permission;
     }
 
     const assessmentCategories = await resolveAssessmentCategories(prisma);
@@ -108,4 +106,4 @@ export async function POST(_req: NextRequest, context: CompleteAssessmentContext
       { status: 500 }
     );
   }
-}
+});

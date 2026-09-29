@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse, after } from 'next/server';
-import { cookies } from 'next/headers';
+import { NextRequest, NextResponse } from 'next/server';
 
-import { AUTH_COOKIE_NAME, verifySession } from '@/lib/oldAuth';
 import { calculateAssessmentItemScore, getAssessmentCategoryKey, resolveAssessmentCategories } from '@/lib/assessmentCategories';
 import { prisma } from '@/lib/prisma';
-import { verifyAnswer, verifyAnswerWithComparison } from '@/lib/grader';
+import { verifyAnswer } from '@/lib/grader';
+import { AuthSession, withAuth } from '@/lib/auth';
+import { checkPatientPermission } from '@/lib/server/utils/patientUtils';
 
 interface AssessmentInput {
   questionId: number;
@@ -18,16 +18,12 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-export async function POST(req: NextRequest, { params }: RouteContext) {
+export const POST = withAuth(['PATIENT', 'THERAPIST'], async (
+  req: NextRequest,
+  session: AuthSession,
+  { params }: RouteContext
+) => {
   try {
-    // --- 1. Authentication ---
-    const cookieStore = await cookies();
-    const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
-
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
-    }
-
     // --- 2. Validate URL Parameters ---
     const { id } = await params;
     const assessmentResultId = Number(id);
@@ -48,8 +44,9 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
     if (assessment.endedAt) {
       return NextResponse.json({ error: 'Assessment is already completed.' }, { status: 400 });
     }
-    if (session.role !== 'THERAPIST' && session.patientId !== assessment.patientId) {
-      return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
+    const permission = await checkPatientPermission(session, assessment.patientId);
+    if (permission !== true) {
+      return permission;
     }
 
     // --- 4. Parse & Group Form Data into a Clean Object ---
@@ -132,9 +129,6 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
           isCorrect: verifyResult.isCorrect,
           correctness: verifyResult.correctness,
           answerBoolean: verifyResult.answerBoolean ?? inputData.answerBoolean,
-          sttModel: verifyResult.sttModel ?? null,
-          audioFileName: verifyResult.audioFileName ?? null,
-
         },
       });
 
@@ -177,59 +171,6 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       return savedItem;
     });
 
-    // --- 7. Schedule Comparison Grading for AFTER the Response is Sent ---
-    // Pure logging for later analysis: never touches assessmentCategoryResult
-    // totals, doesn't affect the client response, and its failure must not
-    // affect the primary grading flow (already saved and returned above).
-    //after(async () => {
-    //  try {
-    //    const compareResult = await verifyAnswerWithComparison({
-    //      questionId: inputData.questionId,
-    //      audio: inputData.voiceFile,
-    //      answerImageUrl: inputData.answerImageUrl,
-    //      answerBoolean: inputData.answerBoolean,
-    //    }, assessment.patientId);
-
-//    //    const modelsToLog: Array<{
-    //      text: string;
-    //      modelUsed: string;
-    //      isCorrect: boolean;
-    //      correctness: number;
-    //      audioFileName?: string;
-    //    }> = [];
-
-//    //    if (compareResult.model1) modelsToLog.push({ ...compareResult.model1, audioFileName: compareResult.audioFileName });
-    //    if (compareResult.model2) modelsToLog.push({ ...compareResult.model2, audioFileName: compareResult.audioFileName });
-
-//    //    if (modelsToLog.length > 0) {
-    //      await prisma.$transaction(
-    //        modelsToLog.map((modelResult) =>
-    //          prisma.assessmentItemResult.create({
-    //            data: {
-    //              assessmentResultId,
-    //              questionId: inputData.questionId,
-    //              asrText: modelResult.text ?? null,
-    //              responseTime: Number.isNaN(inputData.responseTime) ? null : inputData.responseTime,
-    //              answerImageUrl: inputData.answerImageUrl ?? null,
-    //              isCorrect: modelResult.isCorrect,
-    //              correctness: modelResult.correctness,
-    //              answerBoolean: inputData.answerBoolean,
-    //              sttModel: modelResult.modelUsed ?? null,
-    //              audioFileName: modelResult.audioFileName ?? null,
-    //            },
-    //          })
-    //        )
-    //      );
-    //    }
-    //  } catch (comparisonError) {
-    //    // Comparison logging is best-effort; nothing to return to a client
-    //    // that's already gone, just log for observability.
-    //    console.error('Comparison grading failed (non-fatal, post-response):', comparisonError);
-    //  }
-    //});
-
-    // --- 8. Return Success Immediately ---
-    // The response goes out now; the comparison-grading block above runs after.
     return NextResponse.json(
       {
         message: 'Assessment answer recorded.',
@@ -245,4 +186,4 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       { status: 500 }
     );
   }
-}
+});

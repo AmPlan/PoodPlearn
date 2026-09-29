@@ -99,11 +99,21 @@ export function handleAuthError(error: unknown, fallbackMessage = "Authenticatio
   return NextResponse.json({ error: message.replaceAll("email", "account") }, { status });
 }
 
+export type AuthSession = typeof auth.$Infer.Session;
+
 export function withAuth(
   allowedRoles: string[],
-  handler: (req: NextRequest, session: typeof auth.$Infer.Session) => Promise<NextResponse>
+  handler: (req: NextRequest, session: AuthSession) => Promise<NextResponse>
+): (req: NextRequest) => Promise<NextResponse>;
+export function withAuth<TContext>(
+  allowedRoles: string[],
+  handler: (req: NextRequest, session: AuthSession, context: TContext) => Promise<NextResponse>
+): (req: NextRequest, context: TContext) => Promise<NextResponse>;
+export function withAuth(
+  allowedRoles: string[],
+  handler: (req: NextRequest, session: AuthSession, context?: unknown) => Promise<NextResponse>
 ) {
-  return async (req: NextRequest) => {
+  return async (req: NextRequest, context?: unknown) => {
     const session = await auth.api.getSession({ headers: await headers() });
 
     if (!session) {
@@ -115,6 +125,6 @@ export function withAuth(
     }
 
     // Pass the valid session to the actual route handler
-    return handler(req, session);
+    return handler(req, session, context);
   };
 }

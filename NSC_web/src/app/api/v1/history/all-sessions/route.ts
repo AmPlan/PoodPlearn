@@ -1,18 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 
-import { AUTH_COOKIE_NAME, verifySession } from '@/lib/oldAuth';
+import { withAuth } from '@/lib/auth';
+import { checkPatientPermission, getPatientId } from '@/lib/server/utils/patientUtils';
 import { prisma } from '@/lib/prisma';
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(['PATIENT', 'THERAPIST'], async (req: NextRequest, session) => {
     try {
-        const cookieStore = await cookies();
-        const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
-
-        if (!session) {
-            return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
-        }
-
         const { searchParams } = new URL(req.url);
 
         const patientIdParam = searchParams.get('patientId');
@@ -41,16 +34,19 @@ export async function GET(req: NextRequest) {
             limit = Math.min(parsed, 100);
         }
 
-        if (session.role !== 'THERAPIST') {
-            if (patientId && patientId !== session.patientId) {
-                return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
+        const isPrivileged = session.user.role === 'THERAPIST' || session.user.role === 'ADMIN';
+        if (patientId) {
+            const permission = await checkPatientPermission(session, patientId);
+            if (permission !== true) {
+                return permission;
             }
         }
 
-        const effectivePatientId =
-            session.role === 'THERAPIST'
-                ? patientId
-                : session.patientId;
+        const ownPatientId = isPrivileged ? undefined : await getPatientId(session);
+        if (!isPrivileged && ownPatientId === undefined) {
+            return NextResponse.json({ error: 'Patient profile not found.' }, { status: 404 });
+        }
+        const effectivePatientId = isPrivileged ? patientId : ownPatientId;
 
         const [sessions, assessments] = await Promise.all([
             prisma.sessionResult.findMany({
@@ -129,4 +125,4 @@ export async function GET(req: NextRequest) {
             { status: 500 }
         );
     }
-}
+});

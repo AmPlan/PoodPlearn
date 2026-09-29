@@ -1,18 +1,11 @@
-import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { AUTH_COOKIE_NAME, verifySession } from '@/lib/oldAuth';
 import { prisma } from '@/lib/prisma';
+import { withAuth } from '@/lib/auth';
+import { checkPatientPermission } from '@/lib/server/utils/patientUtils';
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(['PATIENT', 'THERAPIST'], async (req: NextRequest, session) => {
     try {
-        const cookieStore = await cookies();
-        const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
-
-        if (!session) {
-            return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
-        }
-
         const rawPatientId = req.nextUrl.searchParams.get('patientId');
         const targetPatientId = Number(rawPatientId);
 
@@ -29,8 +22,9 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'Patient not found.' }, { status: 404 });
         }
 
-        if (session.role !== 'THERAPIST' && session.userId !== patient.userId) {
-            return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
+        const permission = await checkPatientPermission(session, patient.patientId);
+        if (permission !== true) {
+            return permission;
         }
         
         const lastAssessment = await prisma.assessmentResult.findFirst({
@@ -70,8 +64,6 @@ export async function GET(req: NextRequest) {
             },
         });
 
-        lastAssessment?.endedAt
-
         if (!lastAssessment) {
             return NextResponse.json(
                 { assessment: null },
@@ -90,4 +82,4 @@ export async function GET(req: NextRequest) {
             { status: 500 }
         );
     }
-}
+});

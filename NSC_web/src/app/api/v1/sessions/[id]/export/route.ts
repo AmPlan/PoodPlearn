@@ -205,8 +205,6 @@ export async function GET(
                 item.score,
                 item.responseTime,
                 item.createdAt.toISOString(),
-                item.sttModel,
-                item.audioFileName
             ])
         );
     }

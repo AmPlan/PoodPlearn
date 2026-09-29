@@ -41,7 +41,7 @@ export async function getPatientId(session: PatientAccessSession): Promise<numbe
     return patient?.patientId
 }
 
-export async function checkPatientPermission(session: PatientAccessSession, PatientId: number): Promise<boolean | NextResponse> {
+export async function checkPatientPermission(session: PatientAccessSession, PatientId: number): Promise<true | NextResponse> {
     const patient = await prisma.patient.findUnique({
         where: { patientId: PatientId },
         select: { userId: true }
@@ -49,7 +49,11 @@ export async function checkPatientPermission(session: PatientAccessSession, Pati
     if (!patient) {
         return NextResponse.json({ error: "Patient not found." }, { status: 404 });
     }
-    if (patient.userId !== session.user.id && session.user.role !== "THERAPIST") {
+    if (
+        patient.userId !== session.user.id &&
+        session.user.role !== "THERAPIST" &&
+        session.user.role !== "ADMIN"
+    ) {
         return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     }
 

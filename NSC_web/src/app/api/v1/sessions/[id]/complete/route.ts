@@ -1,23 +1,20 @@
-import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { AUTH_COOKIE_NAME, verifySession } from '@/lib/oldAuth';
 import { keepLatestItemsByQuestionId } from '@/lib/latestItemResults';
 import { prisma } from '@/lib/prisma';
+import { AuthSession, withAuth } from '@/lib/auth';
+import { checkPatientPermission } from '@/lib/server/utils/patientUtils';
 
 type CompleteSessionContext = {
   params: { id: string } | Promise<{ id: string }>;
 };
 
-export async function POST(req: NextRequest, context: CompleteSessionContext) {
+export const POST = withAuth(['PATIENT', 'THERAPIST'], async (
+  req: NextRequest,
+  session: AuthSession,
+  context: CompleteSessionContext
+) => {
   try {
-    const cookieStore = await cookies();
-    const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
-
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
-    }
-
     const params = await context.params;
     const sessionId = Number(params.id);
     const body = (await req.json().catch(() => ({}))) as {
@@ -46,8 +43,9 @@ export async function POST(req: NextRequest, context: CompleteSessionContext) {
       return NextResponse.json({ error: 'Session not found.' }, { status: 404 });
     }
 
-    if (session.role !== 'THERAPIST' && session.patientId !== sessionResult.patientId) {
-      return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
+    const permission = await checkPatientPermission(session, sessionResult.patientId);
+    if (permission !== true) {
+      return permission;
     }
 
     const existingCategories = await prisma.sessionCategoryResult.findMany({
@@ -134,7 +132,7 @@ export async function POST(req: NextRequest, context: CompleteSessionContext) {
         await tx.dailyPlanSchedule.update({
           where: {
             dailyPlanScheduleId: body.dailyPlanScheduleId,
-            patientId: sessionResult.patientId,
+            trainingPlan: { patientId: sessionResult.patientId },
           },
           data: {
             status: 'COMPLETED',
@@ -246,4 +244,4 @@ export async function POST(req: NextRequest, context: CompleteSessionContext) {
       { status: 500 }
     );
   }
-}
+});

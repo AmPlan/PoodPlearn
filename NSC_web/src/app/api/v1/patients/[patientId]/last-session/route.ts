@@ -1,22 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 
-import { AUTH_COOKIE_NAME, verifySession } from '@/lib/oldAuth';
 import { prisma } from '@/lib/prisma';
+import { AuthSession, withAuth } from '@/lib/auth';
+import { checkPatientPermission } from '@/lib/server/utils/patientUtils';
 
 type DailyPlanContext = {
     params: { patientId: string } | Promise<{ patientId: string }>;
 };
 
-export async function GET(req: NextRequest, context: DailyPlanContext) {
+export const GET = withAuth(['PATIENT', 'THERAPIST'], async (
+    _req: NextRequest,
+    session: AuthSession,
+    context: DailyPlanContext
+) => {
     try {
-        const cookieStore = await cookies();
-        const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
-
-        if (!session) {
-            return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
-        }
-
         const params = await context.params;
         const patientId = Number(params.patientId);
 
@@ -24,8 +21,9 @@ export async function GET(req: NextRequest, context: DailyPlanContext) {
             return NextResponse.json({ error: 'Invalid patientId.' }, { status: 400 });
         }
 
-        if (session.role !== 'THERAPIST' && session.patientId !== patientId) {
-            return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
+        const permission = await checkPatientPermission(session, patientId);
+        if (permission !== true) {
+            return permission;
         }
 
         const sessionCategoryResult = await prisma.sessionCategoryResult.findFirst({
@@ -55,5 +53,4 @@ export async function GET(req: NextRequest, context: DailyPlanContext) {
             { status: 500 }
         );
     }
-}
-
+});

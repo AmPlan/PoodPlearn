@@ -14,7 +14,9 @@ async function buildWeekStreak(patientId: number) {
 
 	const scheduleRows = await prisma.dailyPlanSchedule.findMany({
 		where: {
-			patientId,
+			trainingPlan: {
+				patientId
+			},
 			scheduledDate: {
 				gte: startDate,
 				lte: today,
@@ -56,7 +58,12 @@ async function checkHasFinishedTodayPlan(patientId: number) {
 	const targetDate = startOfDay(new Date());
 	
 	const sessionsStatus = await prisma.dailyPlanSchedule.findMany({
-		where: { patientId, scheduledDate: targetDate },
+		where: {
+			trainingPlan: {
+				patientId
+			}, 
+			scheduledDate: targetDate
+		},
 		orderBy: { sessionId: "desc" },
 		select: {
 			status: true,

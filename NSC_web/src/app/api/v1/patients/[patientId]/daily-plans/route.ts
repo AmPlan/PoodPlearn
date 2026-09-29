@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { title } from 'process';
 import { authorizePatientAccess, parsePatientId } from '@/lib/daily-plan/api-auth';
 import { parseLocalDate, startOfDay } from '@/lib/daily-plan/date-utils';
 import { buildEnrichedSchedule } from '@/lib/daily-plan/serialize';
 import { prisma } from '@/lib/prisma';
+import { AuthSession, withAuth } from '@/lib/auth';
 
 type DailyPlanContext = {
   params: { patientId: string } | Promise<{ patientId: string }>;
@@ -13,7 +13,8 @@ type GenerateDailyTrainingPlanBody = { date?: string };
 
 /** Resolves the patientId from the route params and checks the caller may access it. */
 async function resolveAuthorizedPatient(
-  context: DailyPlanContext
+  context: DailyPlanContext,
+  session: AuthSession
 ): Promise<{ patientId: number } | { error: NextResponse }> {
   const params = await context.params;
   const patientId = parsePatientId(params.patientId);
@@ -22,7 +23,7 @@ async function resolveAuthorizedPatient(
     return { error: NextResponse.json({ error: 'Invalid patientId.' }, { status: 400 }) };
   }
 
-  const auth = await authorizePatientAccess(patientId);
+  const auth = await authorizePatientAccess(patientId, session);
   if (!auth.ok) {
     return { error: auth.response };
   }
@@ -30,9 +31,9 @@ async function resolveAuthorizedPatient(
   return { patientId };
 }
 
-export async function GET(req: NextRequest, context: DailyPlanContext) {
+export const GET = withAuth(['PATIENT', 'THERAPIST'], async (req: NextRequest, session: AuthSession, context: DailyPlanContext) => {
   try {
-    const resolved = await resolveAuthorizedPatient(context);
+    const resolved = await resolveAuthorizedPatient(context, session);
     if ('error' in resolved) return resolved.error;
     const { patientId } = resolved;
 
@@ -43,7 +44,7 @@ export async function GET(req: NextRequest, context: DailyPlanContext) {
     console.log(targetDate);
 
     const schedules = await prisma.dailyPlanSchedule.findMany({
-      where: { patientId, scheduledDate: targetDate },
+      where: { trainingPlan: { patientId }, scheduledDate: targetDate },
       include: {
         trainingPlan: { include: { trainingSet: { include: { category: true, difficultyLevel: true } } } },
         sessionResult: {
@@ -60,11 +61,11 @@ export async function GET(req: NextRequest, context: DailyPlanContext) {
     console.error('Failed to fetch daily plans:', error);
     return NextResponse.json({ error: 'Unable to fetch daily plans.' }, { status: 500 });
   }
-}
+});
 
-export async function POST(req: NextRequest, context: DailyPlanContext) {
+export const POST = withAuth(['PATIENT', 'THERAPIST'], async (req: NextRequest, session: AuthSession, context: DailyPlanContext) => {
   try {
-    const resolved = await resolveAuthorizedPatient(context);
+    const resolved = await resolveAuthorizedPatient(context, session);
     if ('error' in resolved) return resolved.error;
     const { patientId } = resolved;
 
@@ -126,7 +127,7 @@ export async function POST(req: NextRequest, context: DailyPlanContext) {
 
     const existingSchedules = await prisma.dailyPlanSchedule.findMany({
       where: {
-        patientId,
+        trainingPlan: {patientId},
         scheduledDate: targetDate,
         status: { in: ['PENDING', 'COMPLETED'] },
       },
@@ -192,7 +193,6 @@ export async function POST(req: NextRequest, context: DailyPlanContext) {
 
           const dailyPlanSchedule = await tx.dailyPlanSchedule.create({
             data: {
-              patientId,
               trainingPlanId: trainingPlan.trainingPlanId,
               scheduledDate: targetDate,
               status: 'PENDING',
@@ -340,4 +340,4 @@ export async function POST(req: NextRequest, context: DailyPlanContext) {
     console.error('Failed to generate daily training plan:', error);
     return NextResponse.json({ error: 'Unable to generate daily training plan.' }, { status: 500 });
   }
-}
+});

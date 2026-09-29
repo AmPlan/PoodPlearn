@@ -1,4 +1,4 @@
-import { Gender, prisma } from '@/lib/prisma';
+import { prisma, Enums } from '@/lib/prisma';
 
 // Initialize Prisma Client
 export type CustomCondition = "isMale" | "isFromLampang";
@@ -13,7 +13,7 @@ const conditionResolvers: Record<CustomCondition, ResolverFunction> = {
             where: { patientId },
             select: { gender: true },
         });
-        return patient ? (patient.gender ? (patient.gender === Gender.MALE) : null) : null;
+        return patient ? (patient.gender ? (patient.gender === Enums.Gender.MALE) : null) : null;
     },
 
     isFromLampang: async (patientId: number) => {

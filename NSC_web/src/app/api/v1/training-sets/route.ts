@@ -1,18 +1,10 @@
-import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma"; // <-- Update this path to your db setup file
-import { AUTH_COOKIE_NAME, verifySession } from "@/lib/oldAuth";
+import { withAuth } from "@/lib/auth";
 
 // GET all active training sets
-export async function GET() {
+export const GET = withAuth(["PATIENT", "THERAPIST"], async () => {
     try {
-        const cookieStore = await cookies();
-        const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
-
-        if (!session) {
-            return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-        }
-
         const trainingSets = await prisma.trainingSet.findMany({
             where: {
                 deletedAt: null,
@@ -32,22 +24,11 @@ export async function GET() {
         console.error("Error fetching training sets:", error);
         return NextResponse.json({ error: "Failed to fetch training sets" }, { status: 500 });
     }
-}
+});
 
 // POST (Create) a new training set with questions
-export async function POST(request: Request) {
+export const POST = withAuth(["THERAPIST"], async (request: NextRequest) => {
     try {
-        const cookieStore = await cookies();
-        const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
-
-        if (!session) {
-            return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-        }
-
-        if (session.role !== "THERAPIST") {
-            return NextResponse.json({ error: "Forbidden." }, { status: 403 });
-        }
-
         const body = await request.json();
 
         // Notice we've added `questions` to the destructured body
@@ -88,4 +69,4 @@ export async function POST(request: Request) {
         console.error("Error creating training set:", error);
         return NextResponse.json({ error: "Failed to create training set" }, { status: 500 });
     }
-}
+});

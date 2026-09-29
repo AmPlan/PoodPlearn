@@ -1,13 +1,13 @@
-import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma"; // <-- Update this path
-import { AUTH_COOKIE_NAME, verifySession } from "@/lib/oldAuth";
+import { AuthSession, withAuth } from "@/lib/auth";
 
 // GET a specific training set by ID (with full question data)
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> } 
-) {
+export const GET = withAuth(["PATIENT", "THERAPIST"], async (
+  _request: NextRequest,
+  _session: AuthSession,
+  { params }: { params: Promise<{ id: string }> }
+) => {
   try {
     const resolvedParams = await params;
     const setId = Number(resolvedParams.id);
@@ -52,12 +52,13 @@ export async function GET(
     console.error("Error fetching training set:", error);
     return NextResponse.json({ error: "Failed to fetch training set" }, { status: 500 });
   }
-}
+});
 // PATCH (Edit) a specific training set and update its questions
-export async function PATCH(
-    request: Request,
+export const PATCH = withAuth(["THERAPIST"], async (
+    request: NextRequest,
+    _session: AuthSession,
     { params }: { params: Promise<{ id: string }> }
-) {
+) => {
     try {
         const resolvedParams = await params;
         const setId = Number(resolvedParams.id);
@@ -65,17 +66,6 @@ export async function PATCH(
         if (isNaN(setId)) {
             return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
         }
-        const cookieStore = await cookies();
-        const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
-
-        if (!session) {
-            return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-        }
-
-        if (session.role !== "THERAPIST") {
-            return NextResponse.json({ error: "Forbidden." }, { status: 403 });
-        }
-
         const body = await request.json();
 
         // Extracted fields, now including `questions`
@@ -119,29 +109,19 @@ export async function PATCH(
         console.error("Error updating training set:", error);
         return NextResponse.json({ error: "Failed to update training set" }, { status: 500 });
     }
-}
+});
 // DELETE (Soft Delete) a specific training set
-export async function DELETE(
-    request: Request,
+export const DELETE = withAuth(["THERAPIST"], async (
+    _request: NextRequest,
+    _session: AuthSession,
     { params }: { params: Promise<{ id: string }> }
-) {
+) => {
     try {
         const resolvedParams = await params;
         const setId = Number(resolvedParams.id);
 
         if (isNaN(setId)) {
             return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
-        }
-
-        const cookieStore = await cookies();
-        const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
-
-        if (!session) {
-            return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-        }
-
-        if (session.role !== "THERAPIST") {
-            return NextResponse.json({ error: "Forbidden." }, { status: 403 });
         }
 
         const deletedTrainingSet = await prisma.trainingSet.update({
@@ -156,4 +136,4 @@ export async function DELETE(
         console.error("Error deleting training set:", error);
         return NextResponse.json({ error: "Failed to delete training set" }, { status: 500 });
     }
-}
+});

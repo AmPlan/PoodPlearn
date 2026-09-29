@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse, after } from 'next/server';
-import { cookies } from 'next/headers';
+import { NextRequest, NextResponse } from 'next/server';
 
-import { AUTH_COOKIE_NAME, verifySession } from '@/lib/oldAuth';
 import { prisma } from '@/lib/prisma';
-import { submitAnswer, submitAnswerWithComparison } from '@/lib/grader';
+import { submitAnswer } from '@/lib/grader';
+import { AuthSession, withAuth } from '@/lib/auth';
+import { checkPatientPermission } from '@/lib/server/utils/patientUtils';
 
 interface SessionInput {
   questionId: number;
@@ -19,16 +19,12 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-export async function POST(req: NextRequest, { params }: RouteContext) {
+export const POST = withAuth(['PATIENT', 'THERAPIST'], async (
+  req: NextRequest,
+  session: AuthSession,
+  { params }: RouteContext
+) => {
   try {
-    // --- 1. Authentication ---
-    const cookieStore = await cookies();
-    const session = verifySession(cookieStore.get(AUTH_COOKIE_NAME)?.value);
-
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
-    }
-
     // --- 2. Validate URL Parameters ---
     const { id } = await params;
     const sessionId = Number(id);
@@ -46,8 +42,9 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: 'Session not found.' }, { status: 404 });
     }
 
-    if (session.role !== 'THERAPIST' && session.patientId !== sessionResult.patientId) {
-      return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
+    const permission = await checkPatientPermission(session, sessionResult.patientId);
+    if (permission !== true) {
+      return permission;
     }
 
     // --- 4. Parse & Group Form Data ---
@@ -112,8 +109,6 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
           correctness: submitResult.correctness,
           answerImageUrl: inputData.answerImageUrl ?? null,
           answerBoolean: submitResult.answerBoolean ?? inputData.answerBoolean,
-          sttModel: submitResult.sttModel ?? null,
-          audioFileName: submitResult.audioFileName ?? null,
 
         },
       });
@@ -220,4 +215,4 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       { status: 500 }
     );
   }
-}
+});
