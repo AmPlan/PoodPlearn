@@ -28,7 +28,7 @@ export async function regenerateReviewSchedule(
 
   const existingSchedules = await tx.dailyPlanSchedule.findMany({
     where: {
-      patientId,
+      trainingPlan: { patientId },
       scheduledDate: { gte: targetDate, lt: reviewWindowEnd },
       status: { in: ['PENDING', REVIEW_PLAN_STATUS] },
     },
@@ -85,7 +85,6 @@ export async function regenerateReviewSchedule(
 
       const dailyPlanSchedule = await tx.dailyPlanSchedule.create({
         data: {
-          patientId,
           trainingPlanId: trainingPlan.trainingPlanId,
           scheduledDate,
           status: REVIEW_PLAN_STATUS,

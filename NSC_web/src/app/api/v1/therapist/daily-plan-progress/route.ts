@@ -20,14 +20,18 @@ export const GET = withAuth(["THERAPIST"], async (req: NextRequest) => {
 				trainingPlan: { patientId: { in: patientIds } },
 				scheduledDate: startOfDay(new Date()),
 			},
-			select: { patientId: true, status: true },
+			select: {
+				trainingPlan: { select: { patientId: true } },
+				status: true,
+			},
 		});
 
 		const schedulesByPatient = new Map<number, string[]>();
 		for (const schedule of schedules) {
-			const statuses = schedulesByPatient.get(schedule.patientId) ?? [];
+			const patientId = schedule.trainingPlan.patientId;
+			const statuses = schedulesByPatient.get(patientId) ?? [];
 			statuses.push(schedule.status);
-			schedulesByPatient.set(schedule.patientId, statuses);
+			schedulesByPatient.set(patientId, statuses);
 		}
 
 		const progressByPatient = Object.fromEntries(
