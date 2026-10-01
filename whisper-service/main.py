@@ -376,7 +376,6 @@ app = FastAPI(title="Whisper STT Service", lifespan=lifespan)
 class TranscribeResponse(BaseModel):
     text: str
     duration_seconds: float
-    model_used: str
 
 
 class GradeRequest(BaseModel):
@@ -452,7 +451,7 @@ async def transcribe_endpoint(
             vad_filter=vad_filter,
         )
         return TranscribeResponse(
-            text=text, duration_seconds=duration, model_used=stt_model_1.model_dir
+            text=text, duration_seconds=duration,
         )
     except HTTPException:
         # Already a clean, intentional error (bad extension, empty file) --
