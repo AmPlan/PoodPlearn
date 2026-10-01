@@ -182,7 +182,7 @@ function toPatientResponse(patient: Prisma.PatientGetPayload<{ select: typeof PA
 }
 
 // Returns all patients (therapist-only).
-export const GET = withAuth(["THERAPIST"], async (req, _session) => {
+export const GET = withAuth(["THERAPIST", "ADMIN"], async (req, _session) => {
   try {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search')?.trim();
@@ -300,7 +300,7 @@ function parseAndValidateBody(
 }
 
 // Creates a new patient user (therapist-only).
-export const POST = withAuth(["THERAPIST"], async(req, _session) => {
+export const POST = withAuth(["THERAPIST", "ADMIN"], async(req, _session) => {
   let createdUserId: string | undefined;
 
   try {
