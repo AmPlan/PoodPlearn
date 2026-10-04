@@ -1,24 +1,18 @@
 # Run Postgres locally with Docker Compose
 
-1. Copy the example env file and customize if needed:
-
-```powershell
-copy .env.example .env
-```
-
-2. Start Postgres in detached mode:
+1. Start Postgres in detached mode:
 
 ```powershell
 docker compose up -d
 ```
 
-3. Verify Postgres is running (port 5432):
+2. Verify Postgres is running (port 5432):
 
 ```powershell
 docker compose ps
 ```
 
-4. (Optional) Run Prisma migrate (ensure `prisma/schema.prisma` exists and `DATABASE_URL` is set in `.env`):
+3. (Optional) Run Prisma migrate in the folder "NSC_web"  (ensure `prisma/schema.prisma` exists and `DATABASE_URL` is set in `.env`):
 
 ```powershell
 npx prisma migrate dev --name init

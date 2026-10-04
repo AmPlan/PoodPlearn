@@ -11,7 +11,8 @@
     "auth:generate": "npx @better-auth/cli generate",
     "auth:create-admin": "auth create-admin --config src/lib/auth.ts",
     "lint": "oxlint",
-    "fmt": "oxfmt"
+    "fmt": "oxfmt",
+    "knip": "npx knip"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
@@ -24,18 +25,14 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@scalar/api-reference-react": "^0.9.67",
-    "@scalar/nextjs-api-reference": "^0.11.18",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/swagger-ui-react": "^5.18.0",
-    "ajv": "^8.20.0",
     "auth": "1.7.3",
-    "eslint": "^10.10.0",
-    "eslint-config-next": "^16.3.4",
     "next-openapi-gen": "^1.8.1",
     "oxfmt": "^0.67.0",
     "oxlint": "^1.82.0",
