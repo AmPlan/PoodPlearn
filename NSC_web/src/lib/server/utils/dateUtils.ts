@@ -1,3 +1,5 @@
+import 'server-only'
+
 export const THAI_WEEKDAY_LABELS = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
 
 export function formatLocalDateKey(date: Date) {

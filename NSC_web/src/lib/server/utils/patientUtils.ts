@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { Patient } from "../../../../generated/prisma/client";

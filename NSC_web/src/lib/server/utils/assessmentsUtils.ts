@@ -1,5 +1,6 @@
-import { prisma } from "@/lib/prisma";
+import 'server-only'
 
+import { prisma } from "@/lib/prisma";
 
 export async function hasFinishedAssessment(patientId : number) {
     const finishedAssessmentCount = await prisma.assessmentResult.count({
