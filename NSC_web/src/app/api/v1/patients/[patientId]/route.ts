@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { Prisma, prisma } from '@/lib/prisma';
-import { auth, AuthSession, withAuth } from '@/lib/auth';
+import { auth, AuthSession, withAuth } from '@/server/auth';
 import { checkPatientPermission } from '@/lib/server/utils/patientUtils';
 import { getEmail } from '@/lib/shared/utils/emailUtils';
 
@@ -29,7 +29,7 @@ type UpdatePatientBody = {
   postcode?: string | null;
 };
 
-const accountRegex = /^HN\d{6}$/;
+const accountRegex = /^HN\d{6}$/; //TODO ยังไม่ Confirm
 
 function isValidGender(value: string | undefined): value is 'MALE' | 'FEMALE' | 'OTHER' {
   return value === 'MALE' || value === 'FEMALE' || value === 'OTHER';

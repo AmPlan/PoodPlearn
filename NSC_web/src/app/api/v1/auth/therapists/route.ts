@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { withAuth } from "@/lib/auth";
+import { withAuth } from "@/server/auth";
 import { prisma } from "@/lib/prisma";
 import { isValidEmail } from "@/lib/shared/utils/emailUtils";
 

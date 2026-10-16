@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { prisma } from '@/lib/prisma';
 import { submitAnswer } from '@/lib/grader';
-import { AuthSession, withAuth } from '@/lib/auth';
+import { AuthSession, withAuth } from '@/server/auth';
 import { checkPatientPermission } from '@/lib/server/utils/patientUtils';
 
 interface SessionInput {

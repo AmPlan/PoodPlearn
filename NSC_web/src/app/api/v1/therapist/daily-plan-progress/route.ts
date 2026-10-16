@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { startOfDay } from "@/lib/daily-plan/date-utils";
 import { prisma } from "@/lib/prisma";
-import { withAuth } from "@/lib/auth";
+import { withAuth } from "@/server/auth";
 
 export const GET = withAuth(["THERAPIST"], async (req: NextRequest) => {
 	try {

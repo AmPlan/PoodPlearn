@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { prisma } from '@/lib/prisma';
-import { withAuth } from '@/lib/auth';
+import { withAuth } from '@/server/auth';
 import { checkPatientPermission } from '@/lib/server/utils/patientUtils';
 
 export const GET = withAuth(['PATIENT', 'THERAPIST'], async (req: NextRequest, session) => {

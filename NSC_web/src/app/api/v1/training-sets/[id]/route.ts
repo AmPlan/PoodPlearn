@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma"; // <-- Update this path
-import { AuthSession, withAuth } from "@/lib/auth";
+import { AuthSession, withAuth } from "@/server/auth";
 
 // GET a specific training set by ID (with full question data)
 export const GET = withAuth(["PATIENT", "THERAPIST"], async (

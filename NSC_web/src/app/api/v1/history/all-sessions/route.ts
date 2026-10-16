@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { withAuth } from '@/lib/auth';
+import { withAuth } from '@/server/auth';
 import { checkPatientPermission, getPatientId } from '@/lib/server/utils/patientUtils';
 import { prisma } from '@/lib/prisma';
 

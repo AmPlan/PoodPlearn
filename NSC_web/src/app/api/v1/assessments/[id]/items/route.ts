@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { calculateAssessmentItemScore, getAssessmentCategoryKey, resolveAssessmentCategories } from '@/lib/assessmentCategories';
 import { prisma } from '@/lib/prisma';
 import { verifyAnswer } from '@/lib/grader';
-import { AuthSession, withAuth } from '@/lib/auth';
+import { AuthSession, withAuth } from '@/server/auth';
 import { checkPatientPermission } from '@/lib/server/utils/patientUtils';
 
 interface AssessmentInput {

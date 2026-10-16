@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { auth, handleAuthError } from '@/lib/auth';
+import { auth, handleAuthError } from '@/server/auth';
 import { prisma } from '@/lib/prisma';
 import { headers } from 'next/headers';
 import { getEmail } from '@/lib/shared/utils/emailUtils';

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { withAuth } from "@/lib/auth";
+import { withAuth } from "@/server/auth";
 import { addDays, startOfDay } from "@/lib/daily-plan/date-utils";
 import { prisma } from "@/lib/prisma";
 import { formatLocalDateKey, THAI_WEEKDAY_LABELS } from "@/server/utils/dateUtils";

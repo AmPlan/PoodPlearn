@@ -1,7 +1,9 @@
+import 'server-only'
+
 import { NextResponse } from 'next/server';
 
 import { checkPatientPermission } from '@/lib/server/utils/patientUtils';
-import { auth } from '@/lib/auth';
+import { auth } from '@/server/auth';
 
 type AuthSuccess = { ok: true; session: Session };
 type AuthFailure = { ok: false; response: NextResponse };

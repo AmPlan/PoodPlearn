@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { keepLatestItemsByQuestionId } from '@/lib/latestItemResults';
 import { prisma } from '@/lib/prisma';
-import { AuthSession, withAuth } from '@/lib/auth';
+import { AuthSession, withAuth } from '@/server/auth';
 import { checkPatientPermission } from '@/lib/server/utils/patientUtils';
 
 type CompleteSessionContext = {

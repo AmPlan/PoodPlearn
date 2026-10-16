@@ -1,7 +1,7 @@
 import {  NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 
-import { auth, handleAuthError, withAuth } from '@/lib/auth';
+import { auth, handleAuthError, withAuth } from '@/server/auth';
 import { Prisma, prisma } from '@/lib/prisma';
 import { emailDomain, getEmail } from '@/lib/shared/utils/emailUtils';
 import { ACCOUNT_REGEX, isValidGender } from '@/lib/shared/utils/patientDataUtils';

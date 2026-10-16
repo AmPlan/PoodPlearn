@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authorizePatientAccess, parsePatientId } from '@/lib/daily-plan/api-auth';
+import { authorizePatientAccess, parsePatientId } from '@/server/api-auth';
 import { parseLocalDate, startOfDay } from '@/lib/daily-plan/date-utils';
 import { buildEnrichedSchedule } from '@/lib/daily-plan/serialize';
 import { prisma } from '@/lib/prisma';
-import { AuthSession, withAuth } from '@/lib/auth';
+import { AuthSession, withAuth } from '@/server/auth';
 
 type DailyPlanContext = {
   params: { patientId: string } | Promise<{ patientId: string }>;

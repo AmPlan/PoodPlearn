@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { resolveAssessmentCategories } from '@/lib/assessmentCategories';
 import { prisma } from '@/lib/prisma';
-import { withAuth } from '@/lib/auth';
+import { withAuth } from '@/server/auth';
 import { checkPatientPermission } from '@/server/utils/patientUtils';
 import { z } from 'zod';
 

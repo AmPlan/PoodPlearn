@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma"; // <-- Update this path to your db setup file
-import { withAuth } from "@/lib/auth";
+import { withAuth } from "@/server/auth";
 
 // GET all active training sets
 export const GET = withAuth(["PATIENT", "THERAPIST"], async () => {

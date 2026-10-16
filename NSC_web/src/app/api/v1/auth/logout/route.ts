@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 
-import { auth, handleAuthError } from '@/lib/auth';
+import { auth, handleAuthError } from '@/server/auth';
 
 // Log out
 export async function POST() {
