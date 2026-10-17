@@ -1026,7 +1026,6 @@ export function AssessmentSessionClient() {
 
 	/* ---- milestone trigger helper ---- */
 	function triggerPositiveFeedback(nextPassedCount: number) {
-    console.log(nextPassedCount)
 		const milestone = [5, 10, 15, 20, 25].includes(nextPassedCount)
 			? nextPassedCount
 			: null;

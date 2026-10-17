@@ -41,8 +41,6 @@ export const GET = withAuth(['PATIENT', 'THERAPIST'], async (req: NextRequest, s
     const dateParam = searchParams.get('date');
     const targetDate = startOfDay(dateParam ? parseLocalDate(dateParam) : new Date());
 
-    console.log(targetDate);
-
     const schedules = await prisma.dailyPlanSchedule.findMany({
       where: { trainingPlan: { patientId }, scheduledDate: targetDate },
       include: {

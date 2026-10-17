@@ -316,79 +316,74 @@ export const POST = withAuth(['THERAPIST'], async (req: NextRequest) => {
 /* -------------------------------------------------------------------------- */
 
 export const PATCH = withAuth(['THERAPIST'], async (req: NextRequest) => {
-  try {
-    const questionId = getQuestionId(req);
-    if (!questionId) return jsonError(INVALID_ID_ERROR, 400);
+  const questionId = getQuestionId(req);
+  if (!questionId) return jsonError('Question not found.', 404);
 
-    const question = await prisma.question.findUnique({ where: { questionId } });
-    if (!question) return jsonError('Question not found.', 404);
+  const question = await prisma.question.findUniqueOrThrow({ where: { questionId } });
+  if (!question) return jsonError('Question not found.', 404);
 
-    const json = await readJson(req);
-    if (!json.ok) return jsonError(INVALID_JSON_ERROR, 400);
-    const rawBody = json.data;
+  const json = await readJson(req);
+  if (!json.ok) return jsonError(INVALID_JSON_ERROR, 400);
+  const rawBody = json.data;
 
-    const envelope = PatchEnvelope.safeParse(rawBody);
-    if (!envelope.success) {
-      return jsonError(formatIssue(envelope.error.issues[0]), 400);
-    }
-
-    const { questionType: requestedType, difficultyId: newDifficultyId } = envelope.data;
-    if (requestedType && requestedType !== question.questionType) {
-      return jsonError(
-        'Changing questionType is not supported in this edit endpoint. Update the existing question content only.',
-        400,
-      );
-    }
-
-    const detail = UPDATE_SCHEMAS[question.questionType].safeParse(rawBody);
-    if (!detail.success) {
-      return jsonError(formatIssue(detail.error.issues[0]), 400);
-    }
-
-    const detailUpdate: DetailUpdate = detail.data;
-    const hasDetailUpdate = Object.keys(detailUpdate).length > 0;
-
-    if (!hasDetailUpdate && newDifficultyId === undefined) {
-      return jsonError('No question fields were provided to update.', 400);
-    }
-
-    const result = await prisma.$transaction(async (tx) => {
-      // Bail out before writing anything if the detail row is missing,
-      // so a partial update (e.g. difficultyId alone) is never committed.
-      const existingDetail = await getQuestionDetail(tx, question.questionType, questionId);
-      if (!existingDetail) return null;
-
-      const updatedQuestion =
-        newDifficultyId === undefined
-          ? question
-          : await tx.question.update({
-            where: { questionId },
-            data: { difficultyId: newDifficultyId },
-          });
-
-      if (hasDetailUpdate) {
-        await updateQuestionDetail(tx, question.questionType, questionId, detailUpdate);
-      }
-
-      const questionDetail = await getQuestionDetail(tx, question.questionType, questionId);
-      return { updatedQuestion, questionDetail };
-    });
-
-    if (!result) return jsonError('Question detail not found.', 404);
-
-    const { updatedQuestion, questionDetail } = result;
-
-    return NextResponse.json({
-      message: 'Question updated successfully.',
-      data: {
-        questionId: updatedQuestion.questionId,
-        questionType: updatedQuestion.questionType,
-        difficultyId: updatedQuestion.difficultyId,
-        questionDetail,
-      },
-    });
-  } catch (error) {
-    console.error('Failed to update question:', error);
-    return jsonError('Unable to update question.', 500);
+  const envelope = PatchEnvelope.safeParse(rawBody);
+  if (!envelope.success) {
+    return jsonError(formatIssue(envelope.error.issues[0]), 400);
   }
+
+  const { questionType: requestedType, difficultyId: newDifficultyId } = envelope.data;
+  if (requestedType && requestedType !== question.questionType) {
+    return jsonError(
+      'Changing questionType is not supported in this edit endpoint. Update the existing question content only.',
+      400,
+    );
+  }
+
+  const detail = UPDATE_SCHEMAS[question.questionType].safeParse(rawBody);
+  if (!detail.success) {
+    return jsonError(formatIssue(detail.error.issues[0]), 400);
+  }
+
+  const detailUpdate: DetailUpdate = detail.data;
+  const hasDetailUpdate = Object.keys(detailUpdate).length > 0;
+
+  if (!hasDetailUpdate && newDifficultyId === undefined) {
+    return jsonError('No question fields were provided to update.', 400);
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    // Bail out before writing anything if the detail row is missing,
+    // so a partial update (e.g. difficultyId alone) is never committed.
+    const existingDetail = await getQuestionDetail(tx, question.questionType, questionId);
+    if (!existingDetail) return null;
+
+    const updatedQuestion =
+      newDifficultyId === undefined
+        ? question
+        : await tx.question.update({
+          where: { questionId },
+          data: { difficultyId: newDifficultyId },
+        });
+
+    if (hasDetailUpdate) {
+      await updateQuestionDetail(tx, question.questionType, questionId, detailUpdate);
+    }
+
+    const questionDetail = await getQuestionDetail(tx, question.questionType, questionId);
+    return { updatedQuestion, questionDetail };
+  });
+
+  if (!result) return jsonError('Question detail not found.', 404);
+
+  const { updatedQuestion, questionDetail } = result;
+
+  return NextResponse.json({
+    message: 'Question updated successfully.',
+    data: {
+      questionId: updatedQuestion.questionId,
+      questionType: updatedQuestion.questionType,
+      difficultyId: updatedQuestion.difficultyId,
+      questionDetail,
+    },
+  });
 });

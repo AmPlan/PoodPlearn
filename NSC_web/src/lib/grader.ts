@@ -150,7 +150,7 @@ async function fuzzyGradeText(asrText: string, expected: string): Promise<{ isCo
     const result = await gradeWithService(asrText, expected);
     return { isCorrect: result.isCorrect, correctness: result.correctness };
   } catch (error: unknown) {
-    console.log(error);
+    console.error(error);
     throw error;
   }
 }

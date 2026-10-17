@@ -16,3 +16,4 @@ whisper-service/pathumma-whisper-ct2/vocabulary.json
 .vercel
 .env*
 !.env.example
+NSC_web/tsconfig.tsbuildinfo

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma"; // adjust import path to match your project (this uses the prisma.ts you uploaded)
+import { checkPatientPermission } from "@/lib/server/utils/patientUtils";
+import { AuthSession, withAuth } from "@/server/auth";
+import { toCsvRow } from "@/server/utils/csvUtils";
 
 // ---------- Types ----------
 
@@ -60,26 +63,17 @@ function extractQuestionContext(question: any): QuestionContext {
     }
 }
 
-/** Escapes a single CSV field per RFC 4180 */
-function csvEscape(value: unknown): string {
-    if (value === null || value === undefined) return "";
-    const str = String(value);
-    if (/[",\n\r]/.test(str)) {
-        return `"${str.replace(/"/g, '""')}"`;
-    }
-    return str;
-}
-
-function toCsvRow(values: unknown[]): string {
-    return values.map(csvEscape).join(",");
-}
-
 // ---------- Route ----------
 
-export async function GET(
-    req: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+type ExportAssessmentContext = {
+    params: Promise<{ id: string }>;
+};
+
+export const GET = withAuth(["PATIENT", "THERAPIST"], async (
+    _req: NextRequest,
+    session: AuthSession,
+    { params }: ExportAssessmentContext
+) => {
     const { id } = await params;
     const assessmentResultId = Number(id);
 
@@ -118,6 +112,11 @@ export async function GET(
             { error: "Assessment result not found" },
             { status: 404 }
         );
+    }
+
+    const permission = await checkPatientPermission(session, assessmentResult.patientId);
+    if (permission !== true) {
+        return permission;
     }
 
     // ---------- Build CSV ----------
@@ -193,6 +192,7 @@ export async function GET(
         headers: {
             "Content-Type": "text/csv; charset=utf-8",
             "Content-Disposition": `attachment; filename="${filename}"`,
+            "Cache-Control": "private, no-store",
         },
     });
-}
+});

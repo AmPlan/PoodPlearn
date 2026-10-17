@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { nextCookies } from "better-auth/next-js";
 
 import { headers } from 'next/headers';
+import { withApiHandler } from './api-handler';
 
 export const auth = betterAuth({
   databaseHooks: {
@@ -96,7 +97,7 @@ export function handleAuthError(error: unknown, fallbackMessage = "Authenticatio
   const message: string =
     typeof (error as any)?.message === "string" ? (error as any).message : fallbackMessage;
 
-  console.log(fallbackMessage + ": " + message);
+  console.error(fallbackMessage + ": " + message);
 
   return NextResponse.json({ error: message.replaceAll("email", "account") }, { status });
 }
@@ -107,7 +108,7 @@ export function withAuth<TContext = unknown>(
   allowedRoles: string[],
   handler: (req: NextRequest, session: AuthSession, context: TContext) => Promise<NextResponse>
 ) {
-  return async (req: NextRequest, context: TContext) => {
+  return withApiHandler( async (req: NextRequest, context: TContext) => {
     const session = await auth.api.getSession({ headers: await headers() });
 
     if (!session) {
@@ -120,5 +121,5 @@ export function withAuth<TContext = unknown>(
 
     // Pass the valid session to the actual route handler
     return handler(req, session, context);
-  };
+  });
 }
