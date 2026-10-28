@@ -65,13 +65,23 @@ export const auth = betterAuth({
     },
   },
   session: {
-    expiresIn: 60 * 60 * 24 * 7, // Expiration time in seconds (e.g., 7 days)
-    updateAge: 60 * 60 * 24, // Refresh interval in seconds (e.g., 1 day)
+    // Keep browser sessions short-lived, while refreshing them periodically
+    // during active use.
+    expiresIn: 60 * 60 * 24 * 7,
+    updateAge: 60 * 60 * 24,
   },
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
     maxPasswordLength: 128,
+  },
+  rateLimit: {
+    enabled: true,
+    window: 60,
+    max: 100,
+    customRules: {
+      "/sign-in/email": { window: 60, max: 5 },
+    },
   },
   plugins: [
     username({
@@ -88,6 +98,13 @@ export const auth = betterAuth({
   }),
   advanced: {
     cookiePrefix: "poodPlearn",
+    useSecureCookies: process.env.NODE_ENV === "production",
+    defaultCookieAttributes: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+    },
   },
 });
 

@@ -34,7 +34,8 @@ Configure `.env` before starting the application:
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret; needed for Google sign-in |
 
 Better Auth reads `BETTER_AUTH_SECRET`. If you copied the current template,
-rename its `AUTH_SECRET` entry to `BETTER_AUTH_SECRET` in `.env`.
+rename its `AUTH_SECRET` entry to `BETTER_AUTH_SECRET` in `.env`. Keep this
+secret private and use a long, randomly generated value in deployed environments.
 
 Generate the Prisma client, apply the checked-in migrations to your development
 database, then start Next.js:
@@ -65,8 +66,12 @@ running. The generated OpenAPI document is served at `/openapi.json`.
 
 ## Authentication
 
-Better Auth supports email/password and Google sign-in. Passwords must be
-between 8 and 128 characters.
+Better Auth supports email/password and Google sign-in. New and updated
+passwords must be between 8 and 128 characters. Passwords are hashed with
+Better Auth's built-in scrypt password hashing. Sessions expire after 12 hours
+of inactivity and are refreshed hourly while active. Production cookies use
+HttpOnly, Secure, and SameSite=Lax attributes. Better Auth rate limits its
+email sign-in endpoint, including the app's compatibility login endpoint.
 
 Google sign-in is allowed only for addresses present and enabled in the
 `AllowedGoogleEmail` database table. An administrator can allow a therapist's
