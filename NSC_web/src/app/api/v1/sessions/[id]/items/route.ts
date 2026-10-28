@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { prisma } from '@/lib/prisma';
 import { submitAnswer } from '@/lib/grader';
+import { AudioServiceError } from '@/lib/whisperClient';
 import { AuthSession, withAuth } from '@/server/auth';
 import { checkPatientPermission } from '@/lib/server/utils/patientUtils';
 
@@ -237,6 +238,13 @@ export const POST = withAuth(['PATIENT', 'THERAPIST'], async (
     );
   } catch (error: any) {
     console.error('Failed to record session item:', error);
+
+    if (error instanceof AudioServiceError) {
+      return NextResponse.json(
+        { error: error.message, code: 'AUDIO_SERVICE_ERROR', service: error.service },
+        { status: 502 }
+      );
+    }
 
     // Catch specific logic errors thrown inside the transaction
     if (

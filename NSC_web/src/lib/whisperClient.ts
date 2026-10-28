@@ -2,6 +2,43 @@ import { TranscribeOptions, TranscribeResult, GradeRequest, GradeResult } from "
 
 const WHISPER_SERVICE_URL = process.env.ASR_SERVICE_URL;
 
+export class AudioServiceError extends Error {
+  constructor(
+    message: string,
+    readonly service: 'transcription' | 'grading',
+    readonly status?: number
+  ) {
+    super(message);
+    this.name = 'AudioServiceError';
+  }
+}
+
+async function readServiceError(res: Response, service: AudioServiceError['service']): Promise<AudioServiceError> {
+  const payload = await res.json().catch(() => null) as { detail?: unknown; error?: unknown } | null;
+  const detail = typeof payload?.detail === 'string'
+    ? payload.detail
+    : typeof payload?.error === 'string'
+      ? payload.error
+      : res.statusText || 'Unknown service error';
+  return new AudioServiceError(`Audio ${service} service failed (${res.status}): ${detail}`, service, res.status);
+}
+
+async function callAudioService(
+  url: string,
+  init: RequestInit,
+  service: AudioServiceError['service']
+): Promise<Response> {
+  let res: Response;
+  try {
+    res = await fetch(url, init);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : 'Connection failed';
+    throw new AudioServiceError(`Audio ${service} service is unavailable: ${detail}`, service);
+  }
+  if (!res.ok) throw await readServiceError(res, service);
+  return res;
+}
+
 export async function transcribeWithService(
   audio: Blob,
   filename: string,
@@ -11,15 +48,10 @@ export async function transcribeWithService(
   form.append("file", audio, filename);
   form.append("prompt", options.prompt ?? "");
 
-  const res = await fetch(`${WHISPER_SERVICE_URL}/transcribe`, {
+  const res = await callAudioService(`${WHISPER_SERVICE_URL}/transcribe`, {
     method: "POST",
     body: form,
-  });
-
-  if (!res.ok) {
-    const detail = await res.text().catch(() => res.statusText);
-    throw new Error(`Whisper service error (${res.status}): ${detail}`);
-  }
+  }, 'transcription');
 
   const data = await res.json();
   return {
@@ -41,15 +73,10 @@ export async function transcribeCompareWithService(
   form.append("file", audio, filename);
   form.append("prompt", options.prompt ?? "");
 
-  const res = await fetch(`${WHISPER_SERVICE_URL}/transcribe-compare`, {
+  const res = await callAudioService(`${WHISPER_SERVICE_URL}/transcribe-compare`, {
     method: "POST",
     body: form,
-  });
-
-  if (!res.ok) {
-    const detail = await res.text().catch(() => res.statusText);
-    throw new Error(`Whisper comparison service error (${res.status}): ${detail}`);
-  }
+  }, 'transcription');
 
   const data = await res.json();
   return {
@@ -72,17 +99,11 @@ export async function gradeWithService(
 ): Promise<GradeResult> {
   const body: GradeRequest = { asrText, expectedAnswer };
 
-  const res = await fetch(`${WHISPER_SERVICE_URL}/grade`, {
+  const res = await callAudioService(`${WHISPER_SERVICE_URL}/grade`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const detail = await res.text().catch(() => res.statusText);
-    console.log("Grade service error");
-    throw new Error(`Grade service error (${res.status}): ${detail}`);
-  }
+  }, 'grading');
 
   return res.json();
 }

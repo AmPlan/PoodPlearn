@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { calculateAssessmentItemScore, getAssessmentCategoryKey, resolveAssessmentCategories } from '@/lib/assessmentCategories';
 import { prisma } from '@/lib/prisma';
 import { verifyAnswer } from '@/lib/grader';
+import { AudioServiceError } from '@/lib/whisperClient';
 import { AuthSession, withAuth } from '@/server/auth';
 import { checkPatientPermission } from '@/lib/server/utils/patientUtils';
 
@@ -211,6 +212,12 @@ export const POST = withAuth(['PATIENT', 'THERAPIST'], async (
 
   } catch (error) {
     console.error('Failed to record assessment item:', error);
+    if (error instanceof AudioServiceError) {
+      return NextResponse.json(
+        { error: error.message, code: 'AUDIO_SERVICE_ERROR', service: error.service },
+        { status: 502 }
+      );
+    }
     if (error instanceof Error && error.message === 'Question does not belong to the assessment training set.') {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }

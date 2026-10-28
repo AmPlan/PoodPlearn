@@ -46,35 +46,30 @@ async function resolveAsrText(
   correctAnswer: string
 ): Promise<{ text: string; fileName: string; modelUsed: string } | undefined> {
   if (input.audio) {
-    try {
-      const timestamp = Date.now();
+    const timestamp = Date.now();
 
       // 1. Determine the correct file extension from the Blob's MIME type
       // Default to 'webm' if the type is missing, as it's the most common browser format
-      let extension = 'webm';
-      if (input.audio.type) {
-        if (input.audio.type.includes('mp4') || input.audio.type.includes('m4a')) {
-          extension = 'm4a';
-        } else if (input.audio.type.includes('wav')) {
-          extension = 'wav';
-        } else if (input.audio.type.includes('ogg')) {
-          extension = 'ogg';
-        }
+    let extension = 'webm';
+    if (input.audio.type) {
+      if (input.audio.type.includes('mp4') || input.audio.type.includes('m4a')) {
+        extension = 'm4a';
+      } else if (input.audio.type.includes('wav')) {
+        extension = 'wav';
+      } else if (input.audio.type.includes('ogg')) {
+        extension = 'ogg';
       }
-
-      // 2. Apply the correct extension to the filename
-      const filename = `${timestamp}_${input.questionId}_${correctAnswer}.${extension}`;
-
-      // Send to transcription service 
-      const result = await transcribeWithService(input.audio, filename, {
-        prompt: correctAnswer
-      });
-      
-      return { text: result.text, fileName: filename, modelUsed: result.modelUsed };
-    } catch (error) {
-      console.error("Error processing and saving audio:", error);
-      return undefined;
     }
+
+    // 2. Apply the correct extension to the filename
+    const filename = `${timestamp}_${input.questionId}_${correctAnswer}.${extension}`;
+
+    // Send to transcription service
+    const result = await transcribeWithService(input.audio, filename, {
+      prompt: correctAnswer
+    });
+
+    return { text: result.text, fileName: filename, modelUsed: result.modelUsed };
   }
   return undefined;
 }
@@ -146,13 +141,8 @@ async function getExpectedAnswer(
 }
 
 async function fuzzyGradeText(asrText: string, expected: string): Promise<{ isCorrect: boolean; correctness: number }> {
-  try {
-    const result = await gradeWithService(asrText, expected);
-    return { isCorrect: result.isCorrect, correctness: result.correctness };
-  } catch (error: unknown) {
-    console.error(error);
-    throw error;
-  }
+  const result = await gradeWithService(asrText, expected);
+  return { isCorrect: result.isCorrect, correctness: result.correctness };
 }
 
 export async function verifyAnswer(input: VerifyInput, patientId: number): Promise<VerifyOutput> {
@@ -247,44 +237,39 @@ async function resolveAsrTextCompare(
 } | undefined> {
   if (!input.audio) return undefined;
 
-  try {
-    const timestamp = Date.now();
+  const timestamp = Date.now();
 
-    let extension = 'webm';
-    if (input.audio.type) {
-      if (input.audio.type.includes('mp4') || input.audio.type.includes('m4a')) {
-        extension = 'm4a';
-      } else if (input.audio.type.includes('wav')) {
-        extension = 'wav';
-      } else if (input.audio.type.includes('ogg')) {
-        extension = 'ogg';
-      }
+  let extension = 'webm';
+  if (input.audio.type) {
+    if (input.audio.type.includes('mp4') || input.audio.type.includes('m4a')) {
+      extension = 'm4a';
+    } else if (input.audio.type.includes('wav')) {
+      extension = 'wav';
+    } else if (input.audio.type.includes('ogg')) {
+      extension = 'ogg';
     }
-
-    const filename = `${timestamp}_compare_${input.questionId}_${correctAnswer}.${extension}`;
-
-    const tempDir = path.join(process.cwd(), 'temp');
-    await fs.mkdir(tempDir, { recursive: true });
-
-    const filePath = path.join(tempDir, filename);
-    const arrayBuffer = await input.audio.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    await fs.writeFile(filePath, buffer);
-
-    // Call the dual-model service wrapper
-    const result = await transcribeCompareWithService(input.audio, filename, {
-      prompt: correctAnswer,
-    });
-
-    return {
-      model1: { text: result.model1.text, modelUsed: result.model1.modelUsed },
-      model2: { text: result.model2.text, modelUsed: result.model2.modelUsed },
-      fileName: filename,
-    };
-  } catch (error) {
-    console.error("Error processing audio for comparison:", error);
-    return undefined;
   }
+
+  const filename = `${timestamp}_compare_${input.questionId}_${correctAnswer}.${extension}`;
+
+  const tempDir = path.join(process.cwd(), 'temp');
+  await fs.mkdir(tempDir, { recursive: true });
+
+  const filePath = path.join(tempDir, filename);
+  const arrayBuffer = await input.audio.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  await fs.writeFile(filePath, buffer);
+
+  // Call the dual-model service wrapper
+  const result = await transcribeCompareWithService(input.audio, filename, {
+    prompt: correctAnswer,
+  });
+
+  return {
+    model1: { text: result.model1.text, modelUsed: result.model1.modelUsed },
+    model2: { text: result.model2.text, modelUsed: result.model2.modelUsed },
+    fileName: filename,
+  };
 }
 
 /**
