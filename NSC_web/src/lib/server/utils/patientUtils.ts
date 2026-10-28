@@ -19,7 +19,8 @@ export async function getPatient(
 	userId: string,
 	session: PatientAccessSession,
 ): Promise<PatientIdResult> {
-	if (session.user.role !== "THERAPIST" && session.user.id !== userId) {
+	
+    if (session.user.role !== "THERAPIST" && session.user.id !== userId) {
 		return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 	}
 
@@ -42,17 +43,19 @@ export async function getPatientId(session: PatientAccessSession): Promise<numbe
 
     return patient?.patientId
 }
-
-export async function checkPatientPermission(session: PatientAccessSession, PatientId: number): Promise<true | NextResponse> {
-    const patient = await prisma.patient.findUnique({
-        where: { patientId: PatientId },
+export async function checkPatientPermission(session: PatientAccessSession, PatientId: number): Promise<true | NextResponse>
+export async function checkPatientPermission(session: PatientAccessSession, patient: Patient): Promise<true | NextResponse>
+export async function checkPatientPermission(session: PatientAccessSession, PatientIdOrPatient: number | Patient): Promise<true | NextResponse>{
+    const patientUser = typeof PatientIdOrPatient === "number" ? await prisma.patient.findUnique({
+        where: { patientId: PatientIdOrPatient },
         select: { userId: true }
-    });
-    if (!patient) {
+    }) : PatientIdOrPatient;
+
+    if (!patientUser) {
         return NextResponse.json({ error: "Patient not found." }, { status: 404 });
     }
     if (
-        patient.userId !== session.user.id &&
+        patientUser.userId !== session.user.id &&
         session.user.role !== "THERAPIST" &&
         session.user.role !== "ADMIN"
     ) {

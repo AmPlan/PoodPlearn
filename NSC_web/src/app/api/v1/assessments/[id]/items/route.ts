@@ -70,6 +70,23 @@ export const POST = withAuth(['PATIENT', 'THERAPIST'], async (
       return NextResponse.json({ error: 'A valid responseTime is required.' }, { status: 400 });
     }
 
+    const questionInAssessmentSet = await prisma.trainingSetQuestion.findUnique({
+      where: {
+        setId_questionId: {
+          setId: assessment.setId,
+          questionId: inputData.questionId,
+        },
+      },
+      select: { questionId: true },
+    });
+
+    if (!questionInAssessmentSet) {
+      return NextResponse.json(
+        { error: 'Question does not belong to the assessment training set.' },
+        { status: 400 }
+      );
+    }
+
     // --- 5. Grade the Answer (primary, authoritative result) ---
     const verifyResult = await verifyAnswer({
       questionId: inputData.questionId,
@@ -103,8 +120,7 @@ export const POST = withAuth(['PATIENT', 'THERAPIST'], async (
       return NextResponse.json({ error: 'Unsupported assessment question type.' }, { status: 400 });
     }
 
-    const matchingTrainingSet = question.trainingSets.find((relation) => relation.setId === assessment.setId)
-      ?? question.trainingSets[0];
+    const matchingTrainingSet = question.trainingSets.find((relation) => relation.setId === assessment.setId);
 
     if (!matchingTrainingSet) {
       return NextResponse.json({ error: 'Training set not found for question.' }, { status: 400 });
@@ -119,6 +135,20 @@ export const POST = withAuth(['PATIENT', 'THERAPIST'], async (
 
     // --- 6. Save the Primary (Scored) Result to Database ---
     const item = await prisma.$transaction(async (tx) => {
+      const stillInAssessmentSet = await tx.trainingSetQuestion.findUnique({
+        where: {
+          setId_questionId: {
+            setId: assessment.setId,
+            questionId: inputData.questionId,
+          },
+        },
+        select: { questionId: true },
+      });
+
+      if (!stillInAssessmentSet) {
+        throw new Error('Question does not belong to the assessment training set.');
+      }
+
       const savedItem = await tx.assessmentItemResult.create({
         data: {
           assessmentResultId,
@@ -181,6 +211,9 @@ export const POST = withAuth(['PATIENT', 'THERAPIST'], async (
 
   } catch (error) {
     console.error('Failed to record assessment item:', error);
+    if (error instanceof Error && error.message === 'Question does not belong to the assessment training set.') {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json(
       { error: 'Unable to record assessment answer.' },
       { status: 500 }

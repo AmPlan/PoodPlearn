@@ -1,58 +1,82 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { Prisma, prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { auth, AuthSession, withAuth } from '@/server/auth';
 import { checkPatientPermission } from '@/lib/server/utils/patientUtils';
 import { getEmail } from '@/lib/shared/utils/emailUtils';
+import { z } from 'zod';
 
 type PatientRouteContext = {
   params: { patientId: string } | Promise<{ patientId: string }>;
 };
 
-type UpdatePatientBody = {
-  account?: string;
-  password?: string;
-  patientFirstName?: string;
-  patientLastName?: string;
-  gender?: 'MALE' | 'FEMALE' | 'OTHER';
-  dateOfBirth?: string;
-  occupation?: string;
-  province?: string;
-  note?: string | null;
-  caregiverFirstName?: string;
-  caregiverLastName?: string;
-  caregiverRelationship?: string;
-  caregiverTelephone?: string | null;
-  familyStatus?: string | null;
-  householdMembersCount?: number | string | null;
-  childrenCount?: number | string | null;
-  postcode?: string | null;
-};
-
 const accountRegex = /^HN\d{6}$/; //TODO ยังไม่ Confirm
 
-function isValidGender(value: string | undefined): value is 'MALE' | 'FEMALE' | 'OTHER' {
-  return value === 'MALE' || value === 'FEMALE' || value === 'OTHER';
-}
+const requiredText = (field: string) =>
+  z
+    .string({ error: `${field} is required.` })
+    .trim()
+    .min(1, `${field} is required.`);
+
+const optionalText = (field: string) => requiredText(field).optional();
+
+const nullableText = (field: string) =>
+  z
+    .union([z.string().transform((value) => value.trim() || null), z.null()], {
+      error: `Invalid ${field}.`,
+    })
+    .optional();
+
+const optionalCount = (field: string) => {
+  const error = `Invalid ${field}.`;
+
+  return z.preprocess(
+    (value) => {
+      if (value === null || value === '') return 0;
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed === '' ? Number.NaN : Number(trimmed);
+      }
+      return value;
+    },
+    z.number({ error }).int({ error }).min(0, { error }).optional(),
+  );
+};
+
+const invalidDateOfBirth = 'Invalid dateOfBirth. Use a valid ISO date string.';
+const UpdatePatientBody = z.object({
+  account: requiredText('account').regex(accountRegex, 'Invalid account.').optional(),
+  password: optionalText('password'),
+  patientFirstName: optionalText('patientFirstName'),
+  patientLastName: optionalText('patientLastName'),
+  gender: z.preprocess(
+    (value) => (typeof value === 'string' ? value.trim() : value),
+    z.enum(['MALE', 'FEMALE', 'OTHER'], {
+      error: 'Invalid gender. Use MALE or FEMALE.',
+    }),
+  ).optional(),
+  dateOfBirth: z
+    .string({ error: invalidDateOfBirth })
+    .trim()
+    .pipe(z.coerce.date({ error: invalidDateOfBirth }))
+    .optional(),
+  occupation: optionalText('occupation'),
+  province: optionalText('province'),
+  note: nullableText('note'),
+  caregiverFirstName: optionalText('caregiverFirstName'),
+  caregiverLastName: optionalText('caregiverLastName'),
+  caregiverRelationship: optionalText('caregiverRelationship'),
+  caregiverTelephone: nullableText('caregiverTelephone'),
+  familyStatus: nullableText('familyStatus'),
+  householdMembersCount: optionalCount('householdMembersCount'),
+  childrenCount: optionalCount('childrenCount'),
+  postcode: nullableText('postcode'),
+});
 
 function parsePatientId(value: string) {
   const patientId = Number(value);
 
   return Number.isInteger(patientId) && patientId > 0 ? patientId : null;
-}
-
-function requireText(value: unknown, fieldName: string) {
-  if (typeof value !== 'string') {
-    return { error: `${fieldName} is required.` };
-  }
-
-  const trimmed = value.trim();
-
-  if (!trimmed) {
-    return { error: `${fieldName} is required.` };
-  }
-
-  return { value: trimmed };
 }
 
 async function getCurrentPatient(patientId: number) {
@@ -189,31 +213,25 @@ export const PATCH = withAuth(['PATIENT', 'THERAPIST'], async (
       return NextResponse.json({ error: 'Patient not found.' }, { status: 404 });
     }
 
-    const permission = await checkPatientPermission(session, patientId);
+    const permission = await checkPatientPermission(session, currentPatient);
     if (permission !== true) {
       return permission;
     }
 
-    const body = (await req.json()) as UpdatePatientBody;
+    const parsedBody = UpdatePatientBody.safeParse(await req.json());
+    if (!parsedBody.success) {
+      return NextResponse.json(
+        { error: parsedBody.error.issues[0]?.message ?? 'Invalid request body.' },
+        { status: 400 }
+      );
+    }
 
-    const patientData: Prisma.PatientUpdateInput = {};
-    let updatedAccount: string | undefined;
-    let updatedPassword: string | undefined;
+    const { account: updatedAccount, password: updatedPassword, ...patientData } = parsedBody.data;
 
-    if (body.account !== undefined) {
-      const account = requireText(body.account, 'account');
-
-      if ('error' in account) {
-        return NextResponse.json({ error: account.error }, { status: 400 });
-      }
-
-      if (!accountRegex.test(account.value)) {
-        return NextResponse.json({ error: 'Invalid account.' }, { status: 400 });
-      }
-
+    if (updatedAccount !== undefined) {
       const existingUser = await prisma.user.findFirst({
         where: {
-          email: getEmail(account.value),
+          email: getEmail(updatedAccount),
           NOT: {
             id: currentPatient.user.id,
           },
@@ -225,199 +243,6 @@ export const PATCH = withAuth(['PATIENT', 'THERAPIST'], async (
           { error: 'An account with this username already exists.' },
           { status: 409 }
         );
-      }
-
-      updatedAccount = account.value;
-    }
-
-    if (body.password !== undefined) {
-      const password = requireText(body.password, 'password');
-
-      if ('error' in password) {
-        return NextResponse.json({ error: password.error }, { status: 400 });
-      }
-
-      updatedPassword = password.value;
-    }
-
-    if (body.patientFirstName !== undefined) {
-      const value = requireText(body.patientFirstName, 'patientFirstName');
-
-      if ('error' in value) {
-        return NextResponse.json({ error: value.error }, { status: 400 });
-      }
-
-      patientData.patientFirstName = value.value;
-    }
-
-    if (body.patientLastName !== undefined) {
-      const value = requireText(body.patientLastName, 'patientLastName');
-
-      if ('error' in value) {
-        return NextResponse.json({ error: value.error }, { status: 400 });
-      }
-
-      patientData.patientLastName = value.value;
-    }
-
-    if (body.gender !== undefined) {
-      const gender = typeof body.gender === 'string' ? body.gender.trim() : undefined;
-
-      if (!isValidGender(gender)) {
-        return NextResponse.json(
-          { error: 'Invalid gender. Use MALE or FEMALE.' },
-          { status: 400 }
-        );
-      }
-
-      patientData.gender = gender;
-    }
-
-    if (body.dateOfBirth !== undefined) {
-      const dateOfBirth = new Date(body.dateOfBirth.trim());
-
-      if (Number.isNaN(dateOfBirth.getTime())) {
-        return NextResponse.json(
-          { error: 'Invalid dateOfBirth. Use a valid ISO date string.' },
-          { status: 400 }
-        );
-      }
-
-      patientData.dateOfBirth = dateOfBirth;
-    }
-
-    if (body.occupation !== undefined) {
-      const value = requireText(body.occupation, 'occupation');
-
-      if ('error' in value) {
-        return NextResponse.json({ error: value.error }, { status: 400 });
-      }
-
-      patientData.occupation = value.value;
-    }
-
-    if (body.province !== undefined) {
-      const value = requireText(body.province, 'province');
-
-      if ('error' in value) {
-        return NextResponse.json({ error: value.error }, { status: 400 });
-      }
-
-      patientData.province = value.value;
-    }
-
-    if (body.note !== undefined) {
-      if (body.note === null) {
-        patientData.note = null;
-      } else if (typeof body.note === 'string') {
-        patientData.note = body.note.trim() || null;
-      } else {
-        return NextResponse.json({ error: 'Invalid note.' }, { status: 400 });
-      }
-    }
-
-    if (body.caregiverFirstName !== undefined) {
-      const value = requireText(body.caregiverFirstName, 'caregiverFirstName');
-
-      if ('error' in value) {
-        return NextResponse.json({ error: value.error }, { status: 400 });
-      }
-
-      patientData.caregiverFirstName = value.value;
-    }
-
-    if (body.caregiverLastName !== undefined) {
-      const value = requireText(body.caregiverLastName, 'caregiverLastName');
-
-      if ('error' in value) {
-        return NextResponse.json({ error: value.error }, { status: 400 });
-      }
-
-      patientData.caregiverLastName = value.value;
-    }
-
-    if (body.caregiverRelationship !== undefined) {
-      const value = requireText(body.caregiverRelationship, 'caregiverRelationship');
-
-      if ('error' in value) {
-        return NextResponse.json({ error: value.error }, { status: 400 });
-      }
-
-      patientData.caregiverRelationship = value.value;
-    }
-
-    if (body.caregiverTelephone !== undefined) {
-      if (body.caregiverTelephone === null) {
-        patientData.caregiverTelephone = null;
-      } else if (typeof body.caregiverTelephone === 'string') {
-        patientData.caregiverTelephone = body.caregiverTelephone.trim() || null;
-      } else {
-        return NextResponse.json({ error: 'Invalid caregiverTelephone.' }, { status: 400 });
-      }
-    }
-
-    if (body.familyStatus !== undefined) {
-      if (body.familyStatus === null) {
-        patientData.familyStatus = null;
-      } else if (typeof body.familyStatus === 'string') {
-        patientData.familyStatus = body.familyStatus.trim() || null;
-      } else {
-        return NextResponse.json({ error: 'Invalid familyStatus.' }, { status: 400 });
-      }
-    }
-
-    // --- Household Members Count ---
-    if (body.householdMembersCount !== undefined) {
-      if (body.householdMembersCount === null || body.householdMembersCount === '') {
-        patientData.householdMembersCount = 0; // or null, depending on what you want
-      } else if (typeof body.householdMembersCount === 'number') {
-        if (!Number.isInteger(body.householdMembersCount) || body.householdMembersCount < 0) {
-          return NextResponse.json({ error: 'Invalid householdMembersCount.' }, { status: 400 });
-        }
-        patientData.householdMembersCount = body.householdMembersCount;
-      } else if (typeof body.householdMembersCount === 'string') {
-        const trimmed = body.householdMembersCount.trim();
-        const parsed = Number(trimmed);
-
-        // Catch strings that aren't numbers (like "abc") which parse to NaN
-        if (trimmed === '' || Number.isNaN(parsed) || !Number.isInteger(parsed) || parsed < 0) {
-          return NextResponse.json({ error: 'Invalid householdMembersCount.' }, { status: 400 });
-        }
-        patientData.householdMembersCount = parsed;
-      } else {
-        return NextResponse.json({ error: 'Invalid householdMembersCount.' }, { status: 400 });
-      }
-    }
-
-    // --- Children Count ---
-    if (body.childrenCount !== undefined) {
-      if (body.childrenCount === null || body.childrenCount === '') {
-        patientData.childrenCount = 0; // or null
-      } else if (typeof body.childrenCount === 'number') {
-        // Note: You were missing the integer/negative check here in your original code
-        if (!Number.isInteger(body.childrenCount) || body.childrenCount < 0) {
-          return NextResponse.json({ error: 'Invalid childrenCount.' }, { status: 400 });
-        }
-        patientData.childrenCount = body.childrenCount;
-      } else if (typeof body.childrenCount === 'string') {
-        const trimmed = body.childrenCount.trim();
-        const parsed = Number(trimmed);
-
-        if (trimmed === '' || Number.isNaN(parsed) || !Number.isInteger(parsed) || parsed < 0) {
-          return NextResponse.json({ error: 'Invalid childrenCount.' }, { status: 400 });
-        }
-        patientData.childrenCount = parsed;
-      } else {
-        return NextResponse.json({ error: 'Invalid childrenCount.' }, { status: 400 });
-      }
-    }
-    if (body.postcode !== undefined) {
-      if (body.postcode === null) {
-        patientData.postcode = null;
-      } else if (typeof body.postcode === 'string') {
-        patientData.postcode = body.postcode.trim() || null;
-      } else {
-        return NextResponse.json({ error: 'Invalid postcode.' }, { status: 400 });
       }
     }
 

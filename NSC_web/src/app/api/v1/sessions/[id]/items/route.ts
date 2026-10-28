@@ -71,6 +71,28 @@ export const POST = withAuth(['PATIENT', 'THERAPIST'], async (
       return NextResponse.json({ error: 'A valid responseTime is required.' }, { status: 400 });
     }
 
+    // Only accept questions that belong to the training set assigned to the
+    // currently active category of this session.
+    const activeCategory = await prisma.sessionCategoryResult.findFirst({
+      where: { sessionId, endedAt: null },
+      orderBy: { sessionCategoryId: 'desc' },
+      include: { trainingSet: { select: { setQuestions: { select: { questionId: true } } } } },
+    });
+
+    if (!activeCategory) {
+      return NextResponse.json(
+        { error: 'Active session category not found for this session.' },
+        { status: 400 }
+      );
+    }
+
+    if (!activeCategory.trainingSet.setQuestions.some((item) => item.questionId === inputData.questionId)) {
+      return NextResponse.json(
+        { error: 'Question does not belong to the active session training set.' },
+        { status: 400 }
+      );
+    }
+
     // --- 5. Submit the Answer to Grader (primary, authoritative result) ---
     const submitResult = await submitAnswer({
       questionId: inputData.questionId,
@@ -96,6 +118,20 @@ export const POST = withAuth(['PATIENT', 'THERAPIST'], async (
 
       if (!cat) {
         throw new Error('Active session category not found for this session.');
+      }
+
+      const questionInSet = await tx.trainingSetQuestion.findUnique({
+        where: {
+          setId_questionId: {
+            setId: cat.setId,
+            questionId: inputData.questionId,
+          },
+        },
+        select: { questionId: true },
+      });
+
+      if (!questionInSet) {
+        throw new Error('Question does not belong to the active session training set.');
       }
 
       const item = await tx.sessionItemResult.create({
@@ -205,7 +241,8 @@ export const POST = withAuth(['PATIENT', 'THERAPIST'], async (
     // Catch specific logic errors thrown inside the transaction
     if (
       error.message === 'Question 0 not found.' ||
-      error.message === 'Active session category not found for this session.'
+      error.message === 'Active session category not found for this session.' ||
+      error.message === 'Question does not belong to the active session training set.'
     ) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
