@@ -58,8 +58,17 @@ use `npm run build`; it generates the Prisma client before building Next.js.
 | `npm start` | Start the production server after building |
 | `npm run lint` | Run Oxlint |
 | `npm run fmt` | Format files with Oxfmt |
+| `npm run test` | Run tests |
 | `npm run api:docs` | Generate `public/openapi.json` from API routes |
 | `npm run auth:create-admin -- --email admin@example.com --password "<password>"` | Create the initial admin user |
+
+
+The command starts the local Next.js development server when one is not already
+running. The main sign-in, patient assessment/training, and therapist patient
+form cases mock API responses so they do not need real accounts or Google/ASR
+services. Playwright's configured Chromium, Firefox, and WebKit projects can all
+be run with `npx playwright test`. To test an already-running app at another
+URL, set `PLAYWRIGHT_BASE_URL`; this skips starting a second server.
 
 The interactive API reference is available at `/api-docs` while the app is
 running. The generated OpenAPI document is served at `/openapi.json`.
