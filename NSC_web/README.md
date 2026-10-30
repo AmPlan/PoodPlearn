@@ -37,6 +37,15 @@ Better Auth reads `BETTER_AUTH_SECRET`. If you copied the current template,
 rename its `AUTH_SECRET` entry to `BETTER_AUTH_SECRET` in `.env`. Keep this
 secret private and use a long, randomly generated value in deployed environments.
 
+## Audio handling
+
+Recorded answer audio is sent to the configured `ASR_SERVICE_URL` for
+transcription and is not saved by the web app to disk or retained for playback.
+The app sends a random filename without patient or answer details; it does not
+provide an audio download or playback endpoint, and the therapist review UI
+does not expose recordings. The ASR service receives the audio, so its
+retention and access policies must be configured separately.
+
 Generate the Prisma client, apply the checked-in migrations to your development
 database, then start Next.js:
 

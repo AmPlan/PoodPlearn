@@ -2,8 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { gradeWithService, transcribeWithService, transcribeCompareWithService } from '@/lib/whisperClient';
 import { resolveCustomCondition as resolveCustomConditionSpontaneous } from '@/lib/spontaneousCustomConditions';
 import { resolveCustomCondition as resolveCustomConditionComprehension } from '@/lib/comprehensionCustomConditions';
-import fs from 'fs/promises';
-import path from 'path';
+import { randomUUID } from 'node:crypto';
 
 export type VerifyInput = {
   questionId: number;
@@ -41,35 +40,31 @@ export type CompareVerifyOutput = {
   audioFileName?: string;
 };
 
+function createAudioFilename(audio: Blob): string {
+  let extension = 'webm';
+  if (audio.type.includes('mp4') || audio.type.includes('m4a')) {
+    extension = 'm4a';
+  } else if (audio.type.includes('wav')) {
+    extension = 'wav';
+  } else if (audio.type.includes('ogg')) {
+    extension = 'ogg';
+  }
+
+  return `${randomUUID()}.${extension}`;
+}
+
 async function resolveAsrText(
   input: VerifyInput,
   correctAnswer: string
-): Promise<{ text: string; fileName: string; modelUsed: string } | undefined> {
+): Promise<{ text: string } | undefined> {
   if (input.audio) {
-    const timestamp = Date.now();
+    const result = await transcribeWithService(
+      input.audio,
+      createAudioFilename(input.audio),
+      { prompt: correctAnswer }
+    );
 
-      // 1. Determine the correct file extension from the Blob's MIME type
-      // Default to 'webm' if the type is missing, as it's the most common browser format
-    let extension = 'webm';
-    if (input.audio.type) {
-      if (input.audio.type.includes('mp4') || input.audio.type.includes('m4a')) {
-        extension = 'm4a';
-      } else if (input.audio.type.includes('wav')) {
-        extension = 'wav';
-      } else if (input.audio.type.includes('ogg')) {
-        extension = 'ogg';
-      }
-    }
-
-    // 2. Apply the correct extension to the filename
-    const filename = `${timestamp}_${input.questionId}_${correctAnswer}.${extension}`;
-
-    // Send to transcription service
-    const result = await transcribeWithService(input.audio, filename, {
-      prompt: correctAnswer
-    });
-
-    return { text: result.text, fileName: filename, modelUsed: result.modelUsed };
+    return { text: result.text };
   }
   return undefined;
 }
@@ -224,8 +219,7 @@ export async function submitAnswer(input: SubmitInput, patientId: number): Promi
 }
 
 /**
- * Saves the audio payload locally and requests transcriptions from both models
- * using the multi-model comparison service endpoint.
+ * Requests transcriptions from both models without persisting the audio locally.
  */
 async function resolveAsrTextCompare(
   input: VerifyInput,
@@ -237,30 +231,7 @@ async function resolveAsrTextCompare(
 } | undefined> {
   if (!input.audio) return undefined;
 
-  const timestamp = Date.now();
-
-  let extension = 'webm';
-  if (input.audio.type) {
-    if (input.audio.type.includes('mp4') || input.audio.type.includes('m4a')) {
-      extension = 'm4a';
-    } else if (input.audio.type.includes('wav')) {
-      extension = 'wav';
-    } else if (input.audio.type.includes('ogg')) {
-      extension = 'ogg';
-    }
-  }
-
-  const filename = `${timestamp}_compare_${input.questionId}_${correctAnswer}.${extension}`;
-
-  const tempDir = path.join(process.cwd(), 'temp');
-  await fs.mkdir(tempDir, { recursive: true });
-
-  const filePath = path.join(tempDir, filename);
-  const arrayBuffer = await input.audio.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-  await fs.writeFile(filePath, buffer);
-
-  // Call the dual-model service wrapper
+  const filename = createAudioFilename(input.audio);
   const result = await transcribeCompareWithService(input.audio, filename, {
     prompt: correctAnswer,
   });

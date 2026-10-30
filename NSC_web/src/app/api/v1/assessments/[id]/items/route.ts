@@ -127,15 +127,28 @@ export const POST = withAuth(['PATIENT', 'THERAPIST'], async (
       return NextResponse.json({ error: 'Training set not found for question.' }, { status: 400 });
     }
 
-    const score = calculateAssessmentItemScore({
-      categoryKey,
-      questionType: question.questionType,
-      trainingSetDifficultyLevel: matchingTrainingSet.trainingSet.difficultyLevel?.difficultyLevel ?? 1,
-      isCorrect: verifyResult.isCorrect,
-    });
-
     // --- 6. Save the Primary (Scored) Result to Database ---
-    const item = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw<Array<{ assessment_result_id: number }>>`
+        SELECT assessment_result_id
+        FROM "Assessment_Results"
+        WHERE assessment_result_id = ${assessmentResultId}
+        FOR UPDATE
+      `;
+
+      const currentAssessment = await tx.assessmentResult.findUnique({
+        where: { assessmentResultId },
+        select: { endedAt: true },
+      });
+
+      if (!currentAssessment) {
+        throw new Error('Assessment not found.');
+      }
+
+      if (currentAssessment.endedAt) {
+        throw new Error('Assessment is already completed.');
+      }
+
       const stillInAssessmentSet = await tx.trainingSetQuestion.findUnique({
         where: {
           setId_questionId: {
@@ -150,68 +163,148 @@ export const POST = withAuth(['PATIENT', 'THERAPIST'], async (
         throw new Error('Question does not belong to the assessment training set.');
       }
 
-      const savedItem = await tx.assessmentItemResult.create({
-        data: {
-          assessmentResultId,
-          questionId: inputData.questionId,
-          asrText: verifyResult.asrText ?? null,
-          responseTime: Number.isNaN(inputData.responseTime) ? null : inputData.responseTime,
-          answerImageUrl: inputData.answerImageUrl ?? null,
-          isCorrect: verifyResult.isCorrect,
-          correctness: verifyResult.correctness,
-          answerBoolean: verifyResult.answerBoolean ?? inputData.answerBoolean,
+      const existingItem = await tx.assessmentItemResult.findUnique({
+        where: {
+          assessmentResultId_questionId: {
+            assessmentResultId,
+            questionId: inputData.questionId,
+          },
         },
+        select: { assessmentItemResultId: true },
       });
+
+      const itemData = {
+        asrText: verifyResult.asrText ?? null,
+        responseTime: inputData.responseTime,
+        answerImageUrl: inputData.answerImageUrl ?? null,
+        isCorrect: verifyResult.isCorrect,
+        correctness: verifyResult.correctness,
+        answerBoolean: verifyResult.answerBoolean ?? inputData.answerBoolean,
+      };
+
+      const savedItem = existingItem
+        ? await tx.assessmentItemResult.update({
+            where: {
+              assessmentItemResultId: existingItem.assessmentItemResultId,
+            },
+            data: itemData,
+          })
+        : await tx.assessmentItemResult.create({
+            data: {
+              ...itemData,
+              assessmentResultId,
+              questionId: inputData.questionId,
+            },
+          });
 
       const assessmentCategories = await resolveAssessmentCategories(tx);
-      const matchingCategory = assessmentCategories.find((category) => category.key === categoryKey.toUpperCase());
-
-      if (!matchingCategory) {
-        throw new Error('Assessment category mapping not found.');
-      }
-
-      let categoryResult = await tx.assessmentCategoryResult.findFirst({
-        where: {
-          assessmentResultId,
-          categoryId: matchingCategory.categoryId,
+      const assessmentItems = await tx.assessmentItemResult.findMany({
+        where: { assessmentResultId },
+        include: {
+          question: {
+            select: {
+              questionType: true,
+              trainingSets: {
+                where: { setId: assessment.setId },
+                select: {
+                  trainingSet: {
+                    select: {
+                      difficultyLevel: {
+                        select: { difficultyLevel: true },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       });
 
-      if (!categoryResult) {
-        categoryResult = await tx.assessmentCategoryResult.create({
-          data: {
+      const categoryScores = new Map(
+        assessmentCategories.map((category) => [
+          category.categoryId,
+          { totalScore: 0, maxScore: 0 },
+        ]),
+      );
+
+      for (const assessmentItem of assessmentItems) {
+        const itemCategoryKey = getAssessmentCategoryKey(
+          assessmentItem.question.questionType,
+        );
+        const itemCategory = assessmentCategories.find(
+          (category) => category.key === itemCategoryKey,
+        );
+
+        if (!itemCategory) {
+          continue;
+        }
+
+        const itemDifficulty =
+          assessmentItem.question.trainingSets[0]?.trainingSet.difficultyLevel
+            .difficultyLevel ?? 1;
+        const itemScore = calculateAssessmentItemScore({
+          categoryKey: itemCategory.key,
+          questionType: assessmentItem.question.questionType,
+          trainingSetDifficultyLevel: itemDifficulty,
+          isCorrect: assessmentItem.isCorrect,
+        });
+        const categoryScore = categoryScores.get(itemCategory.categoryId);
+
+        if (categoryScore) {
+          categoryScore.totalScore += itemScore.totalScore;
+          categoryScore.maxScore += itemScore.maxScore;
+        }
+      }
+
+      for (const category of assessmentCategories) {
+        const categoryScore = categoryScores.get(category.categoryId);
+        const categoryResult = await tx.assessmentCategoryResult.findFirst({
+          where: {
             assessmentResultId,
-            categoryId: matchingCategory.categoryId,
-            totalScore: 0,
-            maxScore: 0,
-            recommendedDifficultyId: null,
+            categoryId: category.categoryId,
           },
         });
+
+        if (categoryResult && categoryScore) {
+          await tx.assessmentCategoryResult.update({
+            where: {
+              assessmentCategoryResultId:
+                categoryResult.assessmentCategoryResultId,
+            },
+            data: categoryScore,
+          });
+        } else if (categoryScore) {
+          await tx.assessmentCategoryResult.create({
+            data: {
+              assessmentResultId,
+              categoryId: category.categoryId,
+              ...categoryScore,
+              recommendedDifficultyId: null,
+            },
+          });
+        }
       }
 
-      await tx.assessmentCategoryResult.update({
-        where: {
-          assessmentCategoryResultId: categoryResult.assessmentCategoryResultId,
-        },
-        data: {
-          totalScore: Number(categoryResult.totalScore) + score.totalScore,
-          maxScore: Number(categoryResult.maxScore) + score.maxScore,
-        },
-      });
-
-      return savedItem;
+      return { item: savedItem, created: !existingItem };
     });
 
     return NextResponse.json(
       {
         message: 'Assessment answer recorded.',
-        data: item,
+        data: result.item,
       },
-      { status: 201 }
+      { status: result.created ? 201 : 200 }
     );
 
   } catch (error) {
     console.error('Failed to record assessment item:', error);
+    if (error instanceof Error && error.message === 'Assessment not found.') {
+      return NextResponse.json({ error: error.message }, { status: 404 });
+    }
+    if (error instanceof Error && error.message === 'Assessment is already completed.') {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     if (error instanceof AudioServiceError) {
       return NextResponse.json(
         { error: error.message, code: 'AUDIO_SERVICE_ERROR', service: error.service },

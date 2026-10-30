@@ -30,7 +30,7 @@ async function callAudioService(
 ): Promise<Response> {
   let res: Response;
   try {
-    res = await fetch(url, init);
+    res = await fetch(url, { ...init, cache: 'no-store' });
   } catch (error) {
     const detail = error instanceof Error ? error.message : 'Connection failed';
     throw new AudioServiceError(`Audio ${service} service is unavailable: ${detail}`, service);

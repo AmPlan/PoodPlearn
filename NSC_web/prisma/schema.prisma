@@ -296,6 +296,7 @@ model AssessmentItemResult {
 
   @@index([assessmentResultId])
   @@index([questionId])
+  @@unique([assessmentResultId, questionId])
   @@map("Assessment_Item_Results")
 }
 
