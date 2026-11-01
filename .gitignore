@@ -17,3 +17,5 @@ whisper-service/pathumma-whisper-ct2/vocabulary.json
 .env*
 !.env.example
 NSC_web/tsconfig.tsbuildinfo
+NSC_web/pnpm-lock.yaml
+NSC_web/pnpm-workspace.yaml
