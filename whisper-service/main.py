@@ -30,8 +30,8 @@ from typing import Optional
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from pydantic import BaseModel
 
+import ctranslate2
 from faster_whisper import WhisperModel
-import torch
 
 from pythainlp.tokenize import word_tokenize as th_word_tokenize
 from pythainlp.util import normalize as th_normalize
@@ -69,7 +69,7 @@ MODEL_DIR = "pathumma-whisper-ct2"
 
 
 def get_default_device() -> str:
-    return "cuda" if torch.cuda.is_available() else "cpu"
+    return "cuda" if ctranslate2.get_cuda_device_count() > 0 else "cpu"
 
 
 def choose_compute_type(device: str) -> str:
