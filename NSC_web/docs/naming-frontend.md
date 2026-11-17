@@ -1,5 +1,7 @@
 # Naming Frontend — 17 November 2026
 
+> Updated patient UI and voice-only workflow: see [patient-workflow.md](patient-workflow.md). The original implementation notes below describe the earlier version where they conflict.
+
 ## Screens and scope
 
 - `/patient/training/naming`: introduction and existing daily-plan service; no assessment-based recommendation is fabricated.

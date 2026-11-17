@@ -1,131 +1,66 @@
-"use client";
-
+﻿"use client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { PatientPageShell } from "@/components/layout/PatientPageShell";
-import { PrimaryActionButton } from "@/components/ui/PrimaryActionButton";
+import { ArrowRight, Check } from "lucide-react";
 import { getStandardAssessmentResult } from "../services/standardAssessmentService";
 import type { StandardAssessmentResult } from "../types/assessment.types";
-
-const AUDIO_URL = "/audio/Assessment_End.wav"; // 👈 Replace with your sound URL
-
-const categoryEmoji: Record<string, string> = {
-	Spontaneous: "💬",
-	Comprehension: "👆",
-	Repetition: "🔊",
-	Naming: "🖼️",
-};
-
-const categoryDifficulty: Record<number, string> = {
-	1: "ง่าย",
-	2: "ปานกลาง",
-	3: "ยาก",
-};
-
 export function AssessmentResultClient() {
 	const router = useRouter();
 	const [result, setResult] = useState<StandardAssessmentResult | null>(null);
-	const [errorMessage, setErrorMessage] = useState("");
-	const [isLoading, setIsLoading] = useState(true);
-
-	// Play audio when entering the page
+	const [error, setError] = useState("");
 	useEffect(() => {
-		if (!AUDIO_URL) return;
-
-		const audio = new Audio(AUDIO_URL);
-
-		// Play sound safely handling autoplay restrictions
-		audio.play().catch((error) => {
-			console.warn("Autoplay was prevented by the browser:", error);
-		});
-
-		// Cleanup audio if the component unmounts while playing
-		return () => {
-			audio.pause();
-			audio.currentTime = 0;
-		};
-	}, []);
-
-	useEffect(() => {
-		let isActive = true;
-
-		async function loadResult() {
-			const serviceResult = await getStandardAssessmentResult();
-
-			if (!isActive) {
-				return;
+		let active = true;
+		async function load() {
+			try {
+				const response = await getStandardAssessmentResult();
+				if (!active) return;
+				if (!response.success) throw new Error(response.errorMessage);
+				setResult(response.data);
+			} catch {
+				if (active) setError("ยังสรุปผลไม่ได้ กรุณาลองใหม่ภายหลัง");
 			}
-
-			if (!serviceResult.success) {
-				setErrorMessage(serviceResult.errorMessage);
-				setIsLoading(false);
-				return;
-			}
-
-			setResult(serviceResult.data);
-			setIsLoading(false);
 		}
-
-		loadResult();
-
+		void load();
 		return () => {
-			isActive = false;
+			active = false;
 		};
 	}, []);
-
 	return (
-		<PatientPageShell maxWidthClassName="max-w-[1040px]">
-			{isLoading ? (
-				<p className="text-center text-3xl font-bold text-[#45686A]">
-					กำลังสรุป...
-				</p>
-			) : errorMessage || !result ? (
-				<div className="w-full rounded-4xl border border-[#F3D0D0] bg-white px-7 py-9 text-center shadow-[0_18px_45px_rgba(24,112,108,0.08)]">
-					<p className="text-2xl font-bold text-[#B42318]">
-						{errorMessage || "ไม่พบผล"}
+		<main className="flex min-h-dvh items-center justify-center bg-[#edf9f6] p-5 text-[#173d3f]">
+			<section className="w-full max-w-xl rounded-3xl bg-white p-6 text-center shadow-sm sm:p-10">
+				{error ? (
+					<p role="alert" className="text-xl text-red-800">
+						{error}
 					</p>
-				</div>
-			) : (
-				<article className="w-full rounded-[40px] bg-white px-7 py-9 text-center shadow-[0_28px_80px_rgba(24,112,108,0.13)] ring-1 ring-[#C8E9EA]/80 sm:px-10 sm:py-11">
-					<div className="mx-auto flex h-32 w-32 items-center justify-center rounded-full bg-[#EAF9F8] text-7xl shadow-[0_18px_40px_rgba(31,168,156,0.15)]">
-						🎉
-					</div>
-
-					<h1 className="mt-7 text-[2.55rem] font-bold leading-tight text-[#123232] sm:text-[3.6rem]">
-						สำเร็จแล้วนะคะ!
-					</h1>
-					<p className="mt-3 text-2xl font-semibold text-[#4E6D70] sm:text-[1.7rem]">
-						ผลการทดสอบได้รับการบันทึกแล้วค่ะ
+				) : !result ? (
+					<p role="status" className="text-xl">
+						กำลังสรุป…
 					</p>
-
-					<div className="mx-auto mt-8 grid max-w-225 gap-4 sm:grid-cols-4">
-						{result.categorySummaries.map((summary) => (
-							<section
-								className="rounded-[26px] bg-white px-5 py-6 shadow-[0_10px_24px_rgba(24,112,108,0.07)] ring-1 ring-[#D7EFF0]/70"
-								key={summary.category}
-							>
-								<p className="text-5xl">
-									{categoryEmoji[summary.category] || "✅"}
-								</p>
-								<h2 className="mt-4 text-xl font-bold text-[#123232]">
-									{summary.label}
-								</h2>
-								<p className="mt-3 rounded-full bg-[#EAF9F4] px-4 py-2 text-base font-semibold text-[#167A52]">
-									แนะนำระดับ:{" "}
-									{categoryDifficulty[summary.recommendedDifficultyId] ||
-										"Error"}
-								</p>
-							</section>
-						))}
-					</div>
-
-					<div className="mx-auto mt-9 max-w-145">
-						<PrimaryActionButton onClick={() => router.push("/patient/home")}>
-							{result.homeButtonText}
-						</PrimaryActionButton>
-					</div>
-				</article>
-			)}
-		</PatientPageShell>
+				) : (
+					<>
+						<Check
+							aria-hidden="true"
+							className="mx-auto h-28 w-28 rounded-full bg-[#e0f5eb] p-5 text-[#118a82]"
+						/>
+						<h1 className="mt-6 text-3xl font-bold">ประเมินเสร็จแล้ว</h1>
+						<p className="mt-3 text-xl">ขอบคุณที่ตั้งใจทำ</p>
+						<details className="mt-6 text-left text-base leading-8 text-[#526a66]">
+							<summary className="cursor-pointer py-3">ข้อมูลสำหรับผู้ดูแล</summary>
+							<p>
+								ทำครบ {result.completedQuestions} จาก {result.totalQuestions} ข้อ
+								ข้อมูลแผนฝึกครั้งถัดไปจะแสดงเมื่อระบบส่งกลับในหน้าหลัก
+							</p>
+						</details>
+					</>
+				)}
+				<button
+					onClick={() => router.push("/patient/home")}
+					className="mt-7 inline-flex min-h-20 w-full items-center justify-center gap-3 rounded-2xl bg-[#118a82] px-6 text-2xl font-bold text-white focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-teal-700"
+				>
+					กลับหน้าหลัก
+					<ArrowRight aria-hidden="true" className="h-8 w-8" />
+				</button>
+			</section>
+		</main>
 	);
 }

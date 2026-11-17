@@ -1,38 +1,35 @@
 ﻿"use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ArrowLeft, Image as Picture, Play } from "lucide-react";
 import { getAuthSession } from "@/features/auth/services/authSession";
 import { getTodayTrainingPlan } from "../services/trainingPlanService";
 import type { TodayTrainingPlan } from "../types/trainingPlan.types";
 import { namingButton, namingPage, namingSecondary } from "./NamingLibrary";
-
 export function NamingTrainingLanding() {
 	const [plans, setPlans] = useState<TodayTrainingPlan[]>([]);
-	const [notice, setNotice] = useState("กำลังตรวจสอบแผนฝึกในระบบ…");
+	const [notice, setNotice] = useState("กำลังโหลด…");
 	useEffect(() => {
 		let active = true;
-		const patientId = getAuthSession()?.user.patientId;
 		async function load() {
+			const patientId = getAuthSession()?.user.patientId;
 			if (!patientId) {
-				if (active)
-					setNotice("เข้าสู่ระบบคนไข้เพื่อดูแผนฝึกของคุณ หรือเลือกฝึกเพิ่มเติมจากคลัง");
+				if (active) setNotice("กรุณาเข้าสู่ระบบคนไข้");
 				return;
 			}
 			const result = await getTodayTrainingPlan(patientId);
 			if (!active) return;
 			if (!result.success) {
-				setNotice("ยังโหลดแผนฝึกไม่ได้ กรุณาลองใหม่จากหน้าหลัก");
+				setNotice("ยังโหลดแผนไม่ได้ กรุณากลับหน้าหลัก");
 				return;
 			}
-			const namingPlans = result.data.filter((plan) =>
-				/naming|เรียกชื่อ/i.test(`${plan.categoryName} ${plan.moduleName}`),
+			const namingPlans = result.data.filter(
+				(plan) =>
+					/naming|เรียกชื่อ/i.test(`${plan.categoryName} ${plan.moduleName}`) &&
+					plan.status !== "COMPLETED",
 			);
 			setPlans(namingPlans);
-			setNotice(
-				namingPlans.length
-					? "แผนที่ได้รับจากระบบวันนี้"
-					: "ไม่มีแผน Naming ในข้อมูลที่ระบบส่งกลับ สามารถเลือกฝึกเพิ่มเติมได้",
-			);
+			setNotice(namingPlans.length ? "" : "วันนี้ไม่มีชุดเรียกชื่อภาพที่รอฝึก");
 		}
 		void load();
 		return () => {
@@ -41,58 +38,42 @@ export function NamingTrainingLanding() {
 	}, []);
 	return (
 		<main className={namingPage}>
-			<div className="mx-auto max-w-4xl">
-				<Link href="/patient/home" className={namingSecondary}>
-					กลับหน้าหลัก
+			<div className="mx-auto max-w-2xl">
+				<Link href="/patient/home" className={`${namingSecondary} gap-2`}>
+					<ArrowLeft aria-hidden="true" />
+					กลับ
 				</Link>
-				<section className="mt-8 rounded-3xl border border-[#c5e2dc] bg-white p-6 shadow-sm sm:p-10">
-					<p className="text-lg font-bold text-[#118a82]">พูดเพลิน · Naming</p>
-					<h1 className="mt-3 text-3xl font-bold sm:text-4xl">
-						แบบฝึกเรียกชื่อภาพ
-					</h1>
-					<p className="mt-4 text-xl leading-9">
-						ดูภาพทีละภาพ แล้วลองพูดชื่อสิ่งที่เห็น
-						<br />
-						หากยังนึกไม่ออก สามารถขอคำใบ้ ดูเฉลย หรือข้ามได้
-					</p>
-					<div className="mt-7 rounded-2xl bg-[#edf9f6] p-5">
-						<h2 className="text-2xl font-bold">แผนฝึกของคุณ</h2>
-						<p role="status" className="mt-3 text-lg leading-8">
+				<section className="mt-5 rounded-3xl bg-white p-6 text-center sm:p-10">
+					<Picture
+						aria-hidden="true"
+						className="mx-auto h-20 w-20 text-[#118a82]"
+					/>
+					<h1 className="mt-4 text-3xl font-bold">เรียกชื่อภาพ</h1>
+					{notice && (
+						<p role="status" className="mt-4 text-xl">
 							{notice}
 						</p>
-						{plans.map((plan) => (
-							<div
-								key={plan.dailyPlanScheduleId}
-								className="mt-4 rounded-xl bg-white p-5"
-							>
-								<p className="text-xl font-bold">{plan.moduleName}</p>
-								<p className="mt-2 text-lg">
-									{plan.status === "COMPLETED"
-										? "ฝึกเสร็จแล้ว"
-										: "ชุดฝึกที่ได้รับจากระบบ"}
-								</p>
-								<Link
-									className={`${namingButton} mt-4 w-full`}
-									href={`/patient/training/naming/assigned/${encodeURIComponent(plan.assignedSetId)}?schedule=${encodeURIComponent(plan.dailyPlanScheduleId)}`}
-								>
-									ดูรายละเอียดชุดฝึก
-								</Link>
-							</div>
-						))}
-					</div>
-					<div className="mt-7 border-t border-[#d7e9e4] pt-6">
-						<h2 className="text-2xl font-bold">ฝึกเพิ่มเติม</h2>
-						<p className="my-3 text-lg leading-8">
-							สัตว์ · ของใช้ · ผักผลไม้/อาหาร
-							<br />3 ระดับ รวม 9 ชุด ชุดละ 15 ข้อ
-						</p>
+					)}
+					{plans.map((plan, i) => (
+						<Link
+							key={plan.dailyPlanScheduleId}
+							className={`${namingButton} mt-6 min-h-20 w-full gap-3`}
+							href={`/patient/training/naming/assigned/${encodeURIComponent(plan.assignedSetId)}?schedule=${encodeURIComponent(plan.dailyPlanScheduleId)}`}
+						>
+							<Play aria-hidden="true" className="h-8 w-8" />
+							{plans.length > 1 ? `ฝึกชุดที่ ${i + 1}` : "เริ่มฝึก"}
+						</Link>
+					))}
+					<details className="mt-7 text-left text-base leading-7 text-[#526a66]">
+						<summary className="cursor-pointer py-3">สำหรับผู้ดูแล</summary>
+						<p>รายการด้านบนมาจากแผนฝึกในระบบ ไม่ได้คำนวณผลประเมินใหม่ที่หน้าเว็บ</p>
 						<Link
 							href="/patient/training/naming/animals"
-							className={`${namingButton} w-full`}
+							className={`${namingSecondary} mt-4 w-full`}
 						>
-							เปิดคลังแบบฝึก
+							คลังฝึกเพิ่มเติม
 						</Link>
-					</div>
+					</details>
 				</section>
 			</div>
 		</main>

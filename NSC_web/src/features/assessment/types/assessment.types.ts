@@ -18,7 +18,7 @@ export type QuestionChoice = {
   label: string;
   imageSrc?: string;
   imageUrl?: string;
-  isCorrect: boolean;
+  isCorrect?: boolean;
 };
 
 export type AssessmentHint = {

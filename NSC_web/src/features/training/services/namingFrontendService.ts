@@ -11,7 +11,6 @@ export type RoundResponse = {
 	hintsUsed: number;
 	revealed: boolean;
 	recorded: boolean;
-	typed: boolean;
 	submitted: boolean;
 	correct?: boolean;
 };
@@ -55,9 +54,9 @@ export async function sendNamingResponse(input: {
 	questionId: string;
 	hintsUsed: number;
 	responseTimeMs: number;
-	voiceFile?: Blob;
-	answerText?: string;
+	voiceFile: Blob;
 }): Promise<{ correct?: boolean }> {
+	if (!input.voiceFile?.size) throw new Error("กรุณาบันทึกเสียงก่อน");
 	const result = await submitNamingAnswer({
 		sessionId: input.sessionId,
 		setId: input.setId,
@@ -66,7 +65,6 @@ export async function sendNamingResponse(input: {
 		hintLevelUsed: input.hintsUsed as 0 | 1 | 2 | 3,
 		responseTimeMs: input.responseTimeMs,
 		voiceFile: input.voiceFile,
-		answerText: input.answerText,
 	});
 	if (!result.success) throw new Error(result.errorMessage);
 	return {
@@ -81,7 +79,7 @@ export function summarizeRound(responses: RoundResponse[]) {
 	return {
 		completed: responses.length,
 		skipped: responses.filter((r) => r.skipped).length,
-		answered: responses.filter((r) => r.recorded || r.typed).length,
+		answered: responses.filter((r) => r.recorded).length,
 		hinted: responses.filter((r) => r.hintsUsed > 0).length,
 		revealed: responses.filter((r) => r.revealed).length,
 		evaluated: responses.filter((r) => r.correct !== undefined).length,

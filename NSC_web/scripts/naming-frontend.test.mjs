@@ -6,6 +6,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import { fileURLToPath } from "node:url";
 import * as jsxRuntime from "react/jsx-runtime";
+import * as icons from "lucide-react";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 function load(relative, imports = {}, globals = {}) {
 	const result = { exports: {} };
@@ -98,7 +99,6 @@ test("summary distinguishes ungraded answers, skips and backend results", () => 
 	const stats = api.summarizeRound([
 		{
 			recorded: true,
-			typed: false,
 			skipped: false,
 			hintsUsed: 0,
 			revealed: false,
@@ -106,7 +106,6 @@ test("summary distinguishes ungraded answers, skips and backend results", () => 
 		},
 		{
 			recorded: false,
-			typed: false,
 			skipped: true,
 			hintsUsed: 3,
 			revealed: true,
@@ -114,7 +113,6 @@ test("summary distinguishes ungraded answers, skips and backend results", () => 
 		},
 		{
 			recorded: false,
-			typed: true,
 			skipped: false,
 			hintsUsed: 1,
 			revealed: false,
@@ -124,7 +122,7 @@ test("summary distinguishes ungraded answers, skips and backend results", () => 
 	]);
 	assert.equal(stats.completed, 3);
 	assert.equal(stats.skipped, 1);
-	assert.equal(stats.answered, 2);
+	assert.equal(stats.answered, 1);
 	assert.equal(stats.evaluated, 1);
 	assert.equal(stats.correct, 0);
 	assert.equal(stats.submitted, 1);
@@ -225,11 +223,15 @@ test("first/last question, hints, reveal, rapid next/skip, reset, summary and re
 		"src/features/training/components/NamingTrainingSessionClient.tsx",
 		{
 			"react/jsx-runtime": jsxRuntime,
+			"lucide-react": icons,
 			react: h.react,
 			"next/link": { default: "a" },
 			"@/features/auth/services/authSession": {},
 			"../data/namingCatalog": catalog,
 			"../hooks/useNamingMedia": { useNamingMedia: () => media },
+			"../data/patientAudioManifest": {
+				patientAudioManifest: { namingAnswers: {}, namingHints: {} },
+			},
 			"../services/namingFrontendService": api,
 			"../services/pn002NamingService": {},
 			"./NamingLibrary": {},
@@ -269,34 +271,33 @@ test("first/last question, hints, reveal, rapid next/skip, reset, summary and re
 	}
 	assert(textOf(tree).includes("ข้อ 1 จาก 15"));
 	assert(!flatten(tree).some((n) => typeof n === "string" && n === "หมา"));
-	assert(button("ข้อถัดไป").props.disabled);
-	click("คำใบ้ 0/2");
-	click("คำใบ้ 1/2");
+	assert(
+		!flatten(tree).some((n) => n.type === "input" || n.type === "textarea"),
+	);
+	assert(!/ง่าย|ปานกลาง|ยาก/.test(textOf(tree)));
+	assert(button("ถัดไป").props.disabled);
+	click("คำใบ้");
+	click("คำใบ้");
 	click("เฉลย");
 	assert(textOf(tree).includes("หมา"));
-	assert(!button("ข้อถัดไป").props.disabled);
+	assert(!button("ถัดไป").props.disabled);
 	now += 1000;
-	const next = button("ข้อถัดไป").props.onClick;
+	const next = button("ถัดไป").props.onClick;
 	next();
 	next();
 	tree = render();
 	assert(textOf(tree).includes("ข้อ 2 จาก 15"));
-	assert(button("ข้อถัดไป").props.disabled);
-	assert(button("เฉลย").props.disabled);
-	assert(button("คำใบ้ 0/2"));
-	for (let i = 2; i <= 14; i++) click("ข้ามข้อนี้");
+	assert(button("ถัดไป").props.disabled);
+	assert(button("คำใบ้"));
+	for (let i = 2; i <= 14; i++) click("ข้าม");
 	assert(textOf(tree).includes("ข้อ 15 จาก 15"));
-	click("ข้ามข้อนี้");
-	assert(textOf(tree).includes("ผลจากการฝึกรอบนี้ 15 จาก 15 ข้อ"));
-	assert(textOf(tree).includes("ยังไม่มีผลประเมินความถูกต้อง"));
+	click("ข้าม");
+	assert(textOf(tree).includes("15 / 15 ข้อ"));
+	assert(textOf(tree).includes("ยังไม่มีผลตรวจการพูด"));
 	assert.equal(resets, 15);
 	click("ฝึกซ้ำ");
 	assert(repeated);
-	assert(
-		flatten(tree).some(
-			(n) => n.props?.href === "/patient/training/naming/animals",
-		),
-	);
+	assert(flatten(tree).some((n) => n.props?.href === "/patient/home"));
 });
 
 test("late microphone permission after unmount stops the stream; audio pauses on exit", async () => {
@@ -423,4 +424,242 @@ test("microphone permission denial is recoverable and recording uses actual MIME
 	assert.equal(media.blob, undefined);
 	assert.equal(media.micState, "idle");
 	h.unmount();
+});
+
+test("patient flow blocks training before assessment and trusts backend status", async () => {
+	for (const state of [
+		"needs_standard_assessment",
+		"has_daily_training_plan",
+		"finished_daily_training_plan",
+		"offline",
+	]) {
+		const h = hooks();
+		const redirects = [];
+		const router = { replace: (url) => redirects.push(url) };
+		const auth = { role: "patient", user: { id: 1 } };
+		const ui = load("src/features/patient/components/PatientTrainingGate.tsx", {
+			"react/jsx-runtime": jsxRuntime,
+			react: h.react,
+			"next/navigation": { useRouter: () => router },
+			"@/features/auth/services/authSession": { getAuthSession: () => auth },
+			"../services/patientHomeService": {
+				getPatientHomeData: async () => {
+					if (state === "offline") throw new Error("offline");
+					return { success: true, data: { nextAction: { type: state } } };
+				},
+			},
+		});
+		const initial = ui.PatientTrainingGate({ children: "TRAINING" });
+		assert.notEqual(initial, "TRAINING");
+		await new Promise(setImmediate);
+		h.reset();
+		const view = ui.PatientTrainingGate({ children: "TRAINING" });
+		if (state === "needs_standard_assessment") {
+			assert(redirects.includes("/patient/assessment/session"));
+			assert.notEqual(view, "TRAINING");
+		} else if (state === "offline") {
+			assert.notEqual(view, "TRAINING");
+			assert.equal(redirects.length, 0);
+			assert(flatten(view).some((n) => n.props?.role === "alert"));
+		} else assert.equal(view, "TRAINING");
+	}
+});
+
+test("patient labels hide difficulty; catalog view contains categories and readiness only", () => {
+	const presentation = load(
+		"src/features/patient/services/patientTrainingPresentation.ts",
+	);
+	for (const value of [
+		"Naming ง่าย",
+		"เรียกชื่อภาพ ระดับปานกลาง",
+		"Repetition hard",
+		"แบบฝึกระดับยาก",
+		"Comprehension medium",
+	]) {
+		assert(
+			!/ง่าย|ปานกลาง|ยาก|easy|medium|hard/i.test(
+				presentation.patientTrainingTitle(value),
+			),
+		);
+	}
+	const library = load("src/features/training/components/NamingLibrary.tsx", {
+		"react/jsx-runtime": jsxRuntime,
+		"lucide-react": icons,
+		"next/link": { default: "a" },
+		"../data/namingCatalog": catalog,
+	});
+	const tree = library.NamingLibrary();
+	assert(!/ง่าย|ปานกลาง|ยาก/.test(textOf(tree)));
+	assert(textOf(tree).includes("สัตว์"));
+	assert(textOf(tree).includes("ของใช้"));
+	assert.equal(
+		flatten(tree).filter(
+			(node) => node.type === "button" && node.props.disabled,
+		).length,
+		1,
+	);
+});
+
+test("Naming API adapter submits a real recording without a typed-answer field", async () => {
+	let submitted;
+	const voice = new Blob(["test-voice"], { type: "audio/webm" });
+	const api = load("src/features/training/services/namingFrontendService.ts", {
+		"../data/namingCatalog": catalog,
+		"./pn002NamingService": {
+			submitNamingAnswer: async (payload) => {
+				submitted = payload;
+				return { success: true, data: {} };
+			},
+		},
+	});
+	const result = await api.sendNamingResponse({
+		sessionId: "1",
+		setId: "5",
+		questionId: "100",
+		hintsUsed: 1,
+		responseTimeMs: 1000,
+		voiceFile: voice,
+	});
+	assert.equal(submitted.voiceFile, voice);
+	assert(!("answerText" in submitted));
+	assert.equal(result.correct, undefined);
+});
+
+test("frontend preview is available only in development", () => {
+	for (const mode of ["development", "production", "test"]) {
+		const ui = load(
+			"src/app/dev/preview/layout.tsx",
+			{
+				"react/jsx-runtime": jsxRuntime,
+				"next/link": { default: "a" },
+				"next/navigation": {
+					notFound() {
+						throw new Error("404");
+					},
+				},
+			},
+			{ process: { env: { NODE_ENV: mode } } },
+		);
+		if (mode === "development")
+			assert(textOf(ui.default({ children: "PREVIEW" })).includes("PREVIEW"));
+		else assert.throws(() => ui.default({ children: "PREVIEW" }), /404/);
+	}
+});
+
+test("standard assessment matches all 30 supplied items and category boundaries", () => {
+	const blueprint = load(
+		"src/features/assessment/data/standardAssessmentBlueprint.ts",
+		{
+			"@/features/training/data/namingCatalog": catalog,
+			"@/features/training/data/patientAudioManifest": {
+				patientAudioManifest: { assessmentQuestions: {} },
+			},
+		},
+	);
+	const expected = [
+		"คุณชื่ออะไร",
+		"คุณนามสกุลอะไร",
+		"บ้านของคุณอยู่ที่จังหวัดอะไร",
+		"หนึ่งสัปดาห์มีกี่วัน",
+		"เกลือมีรส…",
+		"คุณทำอะไรเมื่อหิวข้าว",
+		"กล้วย",
+		"เก้าอี้",
+		"แมว",
+		"พัดลม",
+		"คุณเป็น ผู้ชาย ใช่หรือไม่",
+		"บ้านของคุณอยู่ที่ ลำปาง ใช่หรือไม่",
+		"ช้างตัวเล็กกว่ามด ใช่หรือไม่",
+		"เดือนพฤษภาคมมาก่อนเดือนมีนาคม ใช่หรือไม่",
+		"คุณกินส้มโดยไม่ปลอกเปลือก ใช่หรือไม่",
+		"อากาศร้อนมากในช่วงเดือนธันวาคม ใช่หรือไม่",
+		"เตียง",
+		"แตงโม",
+		"โทรศัพท์",
+		"รถติดบนถนน",
+		"เมื่อคืนฝนตกหนักมาก",
+		"แม่ไปซื้อกับข้าวที่ตลาด",
+		"การฝึกพูดทุกวันช่วยให้พูดเก่งขึ้น",
+		"แมว",
+		"จระเข้",
+		"กางเกง",
+		"หวี",
+		"โทรศัพท์",
+		"แอปเปิ้ล",
+		"ไข่ต้ม",
+	];
+	assert.equal(
+		JSON.stringify(blueprint.standardAssessmentText),
+		JSON.stringify(expected),
+	);
+	const questions = blueprint.standardAssessmentQuestions;
+	assert.equal(questions.length, 30);
+	assert.equal(blueprint.standardAssessmentPreview.totalQuestions, 30);
+	assert.equal(new Set(questions.map((q) => q.id)).size, 30);
+	const counts = ["spontaneous", "comprehension", "repetition", "naming"].map(
+		(category) => questions.filter((q) => q.category === category).length,
+	);
+	assert.equal(counts.join(","), "6,10,7,7");
+	questions.forEach((q, i) => assert.equal(q.order, i + 1));
+	assert.equal(questions[23].expectedAnswer, "แมว");
+	assert.equal(questions[29].expectedAnswer, "ไข่ต้ม");
+	for (const q of questions.slice(23)) {
+		assert.equal(q.promptText, "ภาพนี้คืออะไร");
+		assert(q.imageSrc);
+	}
+	assert.equal(blueprint.assessmentMediaPending.imageChoiceOrders.length, 0);
+	assert.equal(blueprint.assessmentMediaPending.audioOrders.length, 23);
+	for (const q of questions.slice(6, 10)) {
+		assert.equal(q.choices.length, 3);
+		assert.equal(new Set(q.choices.map((choice) => choice.imageSrc)).size, 3);
+		assert.equal(
+			q.choices.filter(
+				(choice) =>
+					choice.imageSrc ===
+					catalog.namingCatalog
+						.flatMap((s) => s.questions)
+						.find((item) => item.answer === q.expectedAnswer).imageSrc,
+			).length,
+			1,
+		);
+		q.choices.forEach((choice) =>
+			assert(fs.existsSync(path.join(root, "public", choice.imageSrc))),
+		);
+	}
+	for (const q of questions.slice(10, 16)) {
+		assert.equal(q.expectedAnswer, undefined);
+		assert(q.choices.every((choice) => choice.isCorrect === undefined));
+	}
+	for (const q of questions) {
+		if (q.imageSrc)
+			assert(fs.existsSync(path.join(root, "public", q.imageSrc)));
+		if (q.questionAudioSrc)
+			assert(fs.existsSync(path.join(root, "public", q.questionAudioSrc)));
+		assert(
+			!q.hints?.length,
+			"Do not inherit Naming training hints into the assessment",
+		);
+	}
+});
+
+test("only owner-confirmed prerecorded audio is activated", () => {
+	const audio = load(
+		"src/features/training/data/patientAudioManifest.ts",
+		{},
+		{ URL },
+	);
+	assert.equal(
+		audio.approvedPatientAudio("/training_sounds/Naming_Question.wav"),
+		"/training_sounds/Naming_Question.wav",
+	);
+	assert.equal(audio.approvedPatientAudio("/audio/Session_End.wav"), undefined);
+	assert.equal(
+		audio.approvedPatientAudio("/training_sounds/equipments/set2/bed.wav"),
+		undefined,
+	);
+	assert.equal(Object.keys(audio.patientAudioManifest.namingAnswers).length, 0);
+	assert.equal(
+		Object.keys(audio.patientAudioManifest.assessmentQuestions).length,
+		0,
+	);
 });

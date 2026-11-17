@@ -8,7 +8,8 @@ import {
 	clearAuthSession,
 	getAuthSession,
 } from "@/features/auth/services/authSession";
-import { createNamingSession } from "@/features/training/services/pn002NamingService";
+import { Play } from "lucide-react";
+import { patientTrainingTitle } from "../services/patientTrainingPresentation";
 import { getTodayTrainingPlan } from "@/features/training/services/trainingPlanService";
 import { getPatientHomeData } from "../services/patientHomeService";
 import type {
@@ -95,13 +96,11 @@ export function PatientHomeClient() {
 		buttonText: "",
 	});
 	const [errorMessage, setErrorMessage] = useState("");
-	const [micError, setMicError] = useState("");
+
 	const [isLoading, setIsLoading] = useState(true);
 	const [isFinished, setIsFinished] = useState(false);
 	const [showStartToast, setShowStartToast] = useState(false);
 	const [isStartingAction, setIsStartingAction] = useState(false);
-	const [assignedSetId, setAssignedSetId] = useState("");
-	const [dailyPlanScheduleId, setDailyPlanScheduleId] = useState("");
 	const [todayPlans, setTodayPlans] = useState<JSX.Element[] | undefined>();
 
 	useEffect(() => {
@@ -143,12 +142,12 @@ export function PatientHomeClient() {
 
 					const planList: JSX.Element[] = [];
 
-					let currentPlan;
-
 					if (todayPlanData.length > 0) {
 						for (let i: number = 0; i < todayPlanData.length; i++) {
 							const planEntry = todayPlanData[i];
-							const text = i + 1 + ". " + planEntry.moduleName;
+							const text = patientTrainingTitle(
+								`${planEntry.categoryName} ${planEntry.moduleName}`,
+							);
 							planList.push(
 								<PlanElement
 									text={text}
@@ -156,35 +155,27 @@ export function PatientHomeClient() {
 									key={i}
 								/>,
 							);
-
-							if (planEntry.status === "PENDING" && !currentPlan) {
-								currentPlan = planEntry;
-							}
 						}
-					}
-					if (currentPlan) {
-						setAssignedSetId(currentPlan.assignedSetId);
-						setDailyPlanScheduleId(currentPlan.dailyPlanScheduleId);
 					}
 
 					setTodayPlans(planList);
 
 					setHomeAction({
-						eyebrow: "มาเริ่มฝึกกันเถอะ!",
+						eyebrow: "",
 						title: "กิจกรรมวันนี้",
 						description: "",
 						progressPercent: 0,
-						buttonText: "เริ่มกันเลย!",
+						buttonText: "เริ่มฝึก",
 					});
 					break;
 				}
 				case "needs_standard_assessment":
 					setHomeAction({
-						eyebrow: "วางแผนการฝึกที่เหมาะกับคุณ!",
-						title: "แบบทดสอบวัดระดับ",
-						description: "เพื่อแผนฝึกที่พอดีกับท่าน",
+						eyebrow: "ครั้งแรก",
+						title: "แบบประเมินมาตรฐาน",
+						description: "",
 						progressPercent: 0,
-						buttonText: "เริ่มกันเลย!",
+						buttonText: "เริ่มประเมิน",
 					});
 					break;
 				case "finished_daily_training_plan":
@@ -213,62 +204,6 @@ export function PatientHomeClient() {
 		event.preventDefault();
 
 		if (!homeData || isStartingAction) {
-			return;
-		}
-
-		setMicError("");
-		try {
-			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-			stream.getTracks().forEach((track) => track.stop());
-		} catch (error) {
-			console.error("Microphone permission denied:", error);
-			setMicError(
-				"ไม่สามารถเข้าถึงไมโครโฟนได้ กรุณาอนุญาตการใช้งานไมโครโฟนในเบราว์เซอร์เพื่อเริ่มต้น",
-			);
-			return;
-		}
-
-		const authSession = getAuthSession();
-		if (!authSession || authSession.role !== "patient") {
-			setErrorMessage("Session not found!");
-			setIsLoading(false);
-			return;
-		}
-
-		const patientId = Number(authSession.user.patientId);
-		if (!Number.isInteger(patientId) || patientId <= 0) {
-			setErrorMessage("ไม่พบข้อมูลผู้รับบริการ");
-			setIsLoading(false);
-			return;
-		}
-
-		if (assignedSetId) {
-			if (typeof window !== "undefined") {
-				window.sessionStorage.setItem(
-					"dailyPlanScheduleId",
-					dailyPlanScheduleId,
-				);
-			}
-
-			setShowStartToast(true);
-			setIsStartingAction(true);
-			setIsLoading(true);
-
-			const sessionResult = await createNamingSession(
-				assignedSetId,
-				patientId,
-				dailyPlanScheduleId,
-			);
-
-			if (!sessionResult.success) {
-				setErrorMessage(sessionResult.errorMessage);
-				setIsStartingAction(false);
-				setIsLoading(false);
-				return;
-			}
-
-			const sessionId = sessionResult.data.sessionId;
-			router.push(`/patient/training/naming/session/${sessionId}`);
 			return;
 		}
 
@@ -380,14 +315,12 @@ export function PatientHomeClient() {
 											onClick={handlePrimaryActionClick}
 											aria-disabled={isStartingAction}
 										>
+											<Play
+												aria-hidden="true"
+												className="mr-3 h-8 w-8 shrink-0"
+											/>
 											{homeAction.buttonText}
 										</Link>
-
-										{micError && (
-											<p className="mt-4 text-center text-base font-semibold text-[#B42318] sm:text-lg">
-												{micError}
-											</p>
-										)}
 									</div>
 
 									{homeData.nextAction.type !== "needs_standard_assessment" && (

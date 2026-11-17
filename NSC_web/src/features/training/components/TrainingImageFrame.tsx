@@ -6,7 +6,7 @@ import { useState } from "react";
 type TrainingImageFrameProps = {
 	alt: string;
 	imageSrc?: string;
-	size?: "large" | "choice";
+	size?: "large" | "choice" | "naming";
 	onImageError?: () => void;
 };
 
@@ -17,11 +17,14 @@ export function TrainingImageFrame({
 	onImageError,
 }: TrainingImageFrameProps) {
 	const [failedSrc, setFailedSrc] = useState<string>();
-	const isLarge = size === "large";
+	const isLarge = size !== "choice";
 
-	const frameClassName = isLarge
-		? "h-[clamp(220px,38vh,320px)] w-[clamp(220px,38vh,320px)] max-w-full rounded-[34px] p-2"
-		: "h-[clamp(112px,20vh,164px)] w-[clamp(112px,20vh,164px)] rounded-[24px] p-2";
+	const frameClassName =
+		size === "naming"
+			? "h-[clamp(150px,27dvh,300px)] w-full max-w-lg rounded-3xl p-2"
+			: isLarge
+				? "h-[clamp(220px,38vh,320px)] w-[clamp(220px,38vh,320px)] max-w-full rounded-[34px] p-2"
+				: "h-[clamp(112px,20vh,164px)] w-[clamp(112px,20vh,164px)] rounded-[24px] p-2";
 
 	// Mathematically perfect inner radius (Outer Radius - 8px padding)
 	const imageClassName = isLarge ? "rounded-[26px]" : "rounded-[16px]";

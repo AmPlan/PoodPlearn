@@ -54,21 +54,19 @@ export function useNamingMedia(onError: (message: string) => void) {
 		}
 	}
 
-	async function toggleRecording() {
+	async function toggleRecording(): Promise<boolean> {
 		if (micState === "recording" && recorder.current) {
 			if (limitTimer.current) clearTimeout(limitTimer.current);
 			recorder.current.stop();
-			return;
+			return true;
 		}
-		if (busy.current) return;
+		if (busy.current) return false;
 		if (
 			!navigator.mediaDevices?.getUserMedia ||
 			typeof MediaRecorder === "undefined"
 		) {
-			onError(
-				"เบราว์เซอร์นี้ใช้ไมโครโฟนไม่ได้ กรุณาใช้ Chrome หรือ Safari ผ่าน HTTPS หรือพิมพ์คำตอบแทน",
-			);
-			return;
+			onError("เปิดไมโครโฟนไม่ได้ กรุณาให้ผู้ดูแลช่วยตรวจเบราว์เซอร์");
+			return false;
 		}
 		stopAudio();
 		busy.current = true;
@@ -80,7 +78,7 @@ export function useNamingMedia(onError: (message: string) => void) {
 			acquired = await navigator.mediaDevices.getUserMedia({ audio: true });
 			if (token !== generation.current) {
 				acquired.getTracks().forEach((track) => track.stop());
-				return;
+				return false;
 			}
 			stream.current = acquired;
 			const mime = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm"].find(
@@ -118,16 +116,18 @@ export function useNamingMedia(onError: (message: string) => void) {
 			limitTimer.current = setTimeout(() => {
 				if (next.state === "recording") next.stop();
 			}, 60000);
+			return true;
 		} catch (error) {
 			acquired?.getTracks().forEach((track) => track.stop());
-			if (token !== generation.current) return;
+			if (token !== generation.current) return false;
 			busy.current = false;
 			setMicState("idle");
 			onError(
 				error instanceof DOMException && error.name === "NotAllowedError"
-					? "ยังไม่ได้อนุญาตไมโครโฟน กรุณาอนุญาตในเบราว์เซอร์ หรือพิมพ์คำตอบแทน"
-					: "เปิดไมโครโฟนไม่ได้ กรุณาตรวจสอบอุปกรณ์ หรือพิมพ์คำตอบแทน",
+					? "กรุณาอนุญาตไมโครโฟน แล้วลองอีกครั้ง"
+					: "เปิดไมโครโฟนไม่ได้ กรุณาให้ผู้ดูแลช่วยตรวจอุปกรณ์",
 			);
+			return false;
 		}
 	}
 
