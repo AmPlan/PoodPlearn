@@ -576,7 +576,7 @@ test("only owner-confirmed prerecorded audio is activated", () => {
 	);
 });
 
-function practiceHarness(total) {
+function practiceHarness(total, options) {
 	const h = hooks();
 	let now = 1000;
 	let nextId = 0;
@@ -611,7 +611,7 @@ function practiceHarness(total) {
 	);
 	const render = () => {
 		h.reset();
-		return api.usePracticeFlow(total);
+		return api.usePracticeFlow(total, options);
 	};
 	return {
 		render,
@@ -717,6 +717,61 @@ test("30-question round reminds only 8 and 15, automatically returns, and finish
 	drain();
 	assert.equal(h.render().finished, true);
 	assert.equal(h.render().answered, 30);
+	assert.equal(h.timerCount(), 0);
+});
+
+test("Naming advances without per-answer overlays, recovers skipped 3/8, encourages at 5/10/15 and counts actual grades once", () => {
+	const h = practiceHarness(15, { perQuestionFeedback: false });
+	const milestones = [];
+	const answer = () => {
+		const flow = h.render();
+		const correct = flow.index % 3 === 0 ? undefined : flow.index % 2 === 0;
+		const response = {
+			questionId: String(flow.index),
+			recorded: true,
+			submitted: correct !== undefined,
+			skipped: false,
+			hintsUsed: 0,
+			revealed: false,
+			correct,
+		};
+		assert.equal(flow.complete(response, correct), true);
+		assert.equal(flow.complete(response, correct), false);
+		assert.equal(h.render().cue, null);
+		h.fire(); // next task, no per-question animation or Next click
+		if (h.render().cue?.kind === "milestone") {
+			milestones.push(h.render().answered);
+			h.fire();
+		}
+	};
+	for (let i = 0; i < 15; i++) {
+		assert.equal(h.render().index, i);
+		if (i === 2 || i === 7) {
+			h.tick();
+			h.render().skip();
+		} else answer();
+	}
+	assert.equal(h.render().finished, false);
+	assert.equal(h.render().cue.kind, "remaining");
+	assert.deepEqual(Array.from(h.render().cue.remainingQuestions), [3, 8]);
+	h.fire();
+	assert.equal(h.render().index, 2);
+	answer();
+	assert.equal(h.render().index, 7);
+	answer();
+	assert.equal(h.render().finished, true);
+	assert.deepEqual(milestones, [5, 10, 15]);
+	assert.equal(h.render().remaining, 0);
+	const service = load(
+		"src/features/training/services/namingFrontendService.ts",
+		{ "../data/namingCatalog": catalog, "./pn002NamingService": {} },
+	);
+	const stats = service.summarizeRound(
+		h.render().entries.map((e) => e.response),
+	);
+	assert.equal(stats.answered, 15);
+	assert.equal(stats.evaluated, 10);
+	assert.equal(stats.correct, 5);
 	assert.equal(h.timerCount(), 0);
 });
 
@@ -979,6 +1034,101 @@ test("Repetition shows its actual sentence; recording submits a blob once withou
 			(n) => n.type === "input" || n.type === "textarea",
 		),
 	);
+});
+
+test("Naming renders every supplied image without its answer, reveals only after hints, and submits real audio once", () => {
+	function setup(question, blob) {
+		const h = hooks();
+		const sent = [];
+		const api = load(
+			"src/features/training/components/NamingTrainingSessionClient.tsx",
+			{
+				"react/jsx-runtime": jsxRuntime,
+				react: h.react,
+				"next/link": { default: "a" },
+				"lucide-react": icons,
+				"./practiceStyles": load(
+					"src/features/training/components/practiceStyles.ts",
+				),
+				"@/features/auth/services/authSession": {},
+				"../data/namingCatalog": catalog,
+				"../hooks/useNamingMedia": {
+					useNamingMedia: () => ({
+						blob,
+						micState: blob ? "recorded" : "idle",
+						stopAudio() {},
+						play() {},
+						toggleRecording() {},
+					}),
+				},
+				"../hooks/usePracticeFlow": {},
+				"./QuestionDots": {},
+				"./PracticeFeedback": {},
+				"../data/patientAudioManifest": {
+					patientAudioManifest: { namingHints: {}, namingAnswers: {} },
+				},
+				"../services/namingFrontendService": {},
+				"../services/pn002NamingService": {},
+				"./NamingLibrary": {},
+				"./TrainingImageFrame": { TrainingImageFrame: "image" },
+			},
+		);
+		return {
+			sent,
+			render() {
+				h.reset();
+				return api.NamingQuestion({
+					question,
+					order: 1,
+					locked: false,
+					answered: false,
+					busy: false,
+					onSubmit: async (...args) => sent.push(args),
+				});
+			},
+		};
+	}
+	for (const set of catalog.namingCatalog) {
+		for (const question of set.questions) {
+			const tree = setup(question).render();
+			assert.equal(
+				flatten(tree).find((n) => n.type === "image").props.imageSrc,
+				question.imageSrc,
+			);
+			assert(
+				!textOf(tree).includes(question.answer),
+				`Premature answer: ${question.id}`,
+			);
+			assert(
+				!flatten(tree).some((n) => n.type === "input" || n.type === "textarea"),
+			);
+		}
+	}
+	const question = catalog.namingCatalog[0].questions[0];
+	const hints = setup(question);
+	const pressHint = () =>
+		flatten(hints.render())
+			.find(
+				(n) =>
+					n.type === "button" &&
+					["คำใบ้", "เฉลย"].some((label) => textOf(n).includes(label)),
+			)
+			.props.onClick();
+	pressHint();
+	assert(textOf(hints.render()).includes(question.featureHint));
+	pressHint();
+	assert(textOf(hints.render()).includes(question.initialHint));
+	pressHint();
+	assert(textOf(hints.render()).includes(question.answer));
+	assert(!textOf(setup(question).render()).includes(question.answer));
+	const blob = new Blob(["patient voice"], { type: "audio/webm" });
+	const voice = setup(question, blob);
+	voice.render();
+	voice.render();
+	assert.equal(voice.sent.length, 1);
+	assert.equal(voice.sent[0][0], blob);
+	assert.equal(voice.sent[0][1], 0);
+	assert.equal(voice.sent[0][2], false);
 });
 
 test("feedback audio continues once on end and cannot advance after cancellation", async () => {

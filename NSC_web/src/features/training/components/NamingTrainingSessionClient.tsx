@@ -6,6 +6,9 @@ import {
 	practiceQuietButton,
 	practiceAction,
 	practiceMic,
+	practiceImageScene,
+	practiceImageHeading,
+	practiceControls,
 } from "./practiceStyles";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -40,6 +43,7 @@ import {
 import {
 	loadAssignedNamingSet,
 	sendNamingResponse,
+	summarizeRound,
 	type NamingRunSet,
 	type RoundResponse,
 } from "../services/namingFrontendService";
@@ -241,7 +245,9 @@ export function NamingRound({
 	schedule?: string;
 	onRepeat: () => void;
 }) {
-	const flow = usePracticeFlow<RoundResponse>(set.questions.length);
+	const flow = usePracticeFlow<RoundResponse>(set.questions.length, {
+		perQuestionFeedback: false,
+	});
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState("");
 	const [completion, setCompletion] = useState<
@@ -254,6 +260,9 @@ export function NamingRound({
 		useNamingMedia(setError);
 	const question = set.questions[flow.index];
 	const entry = flow.entries[flow.index];
+	const summary = summarizeRound(
+		flow.entries.flatMap((item) => (item.response ? [item.response] : [])),
+	);
 	const canSave = Boolean(
 		sessionId &&
 			flow.finished &&
@@ -334,6 +343,22 @@ export function NamingRound({
 					</div>
 					<h1 className="mt-6 text-3xl font-bold">ทำครบแล้ว เก่งมากค่ะ</h1>
 					<p className="mt-4 text-xl">ขอบคุณที่ตั้งใจฝึก</p>
+					<p className="mt-3 text-lg text-[#526a66]">
+						ทำครบ {summary.answered} จาก {set.questions.length} ข้อ
+					</p>
+					<details className="mt-5 text-base leading-7 text-[#638078]">
+						<summary className="cursor-pointer py-3">ผลการฝึกรอบนี้</summary>
+						{summary.evaluated > 0 ? (
+							<p>
+								ตอบถูก {summary.correct} จาก {summary.evaluated} ข้อที่ระบบตรวจแล้ว
+								{summary.evaluated < summary.answered
+									? ` · รอผลอีก ${summary.answered - summary.evaluated} ข้อ`
+									: ""}
+							</p>
+						) : (
+							<p>ยังไม่มีผลคะแนนจากระบบ</p>
+						)}
+					</details>
 					<p role="status" className="mt-4 text-lg text-[#526a66]">
 						{completion === "saving"
 							? "กำลังบันทึก…"
@@ -372,7 +397,10 @@ export function NamingRound({
 		<main className={practicePage}>
 			<section className={practiceScene}>
 				<header className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 pb-2">
-					<Link href={homeHref} className={`${practiceQuietButton} justify-self-start`}>
+					<Link
+						href={homeHref}
+						className={`${practiceQuietButton} justify-self-start`}
+					>
 						<ArrowLeft aria-hidden="true" />
 						กลับ
 					</Link>
@@ -441,7 +469,7 @@ export function NamingRound({
 	);
 }
 
-function NamingQuestion({
+export function NamingQuestion({
 	question,
 	order,
 	locked,
@@ -505,13 +533,9 @@ function NamingQuestion({
 					? "ส่งเสียงอีกครั้ง"
 					: "แตะเพื่อพูด";
 	return (
-		<div className="grid flex-1 items-center gap-5 py-3 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.75fr)] lg:gap-10 lg:py-2">
-			<div className="flex min-w-0 flex-col items-center justify-center gap-2">
-				<h1
-					ref={heading}
-					tabIndex={-1}
-					className="text-center text-3xl font-semibold leading-snug text-[#31584f] outline-none sm:text-4xl"
-				>
+		<div className={practiceImageScene}>
+			<div className="flex min-w-0 flex-col items-center justify-center gap-3">
+				<h1 ref={heading} tabIndex={-1} className={practiceImageHeading}>
 					ภาพนี้คืออะไร
 				</h1>
 				<TrainingImageFrame
@@ -521,7 +545,7 @@ function NamingQuestion({
 					onImageError={() => setImageFailed(true)}
 				/>
 			</div>
-			<div className="flex min-w-0 flex-col items-center justify-center gap-5 lg:gap-7">
+			<div className={practiceControls}>
 				{answered ? (
 					<p className="flex min-h-36 items-center gap-3 text-2xl font-semibold text-[#118a82]">
 						<Check aria-hidden="true" className="h-12 w-12" />

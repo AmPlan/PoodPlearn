@@ -14,7 +14,10 @@ export type PracticeCue = {
 	remainingQuestions?: number[];
 };
 
-export function usePracticeFlow<T>(total: number) {
+export function usePracticeFlow<T>(
+	total: number,
+	{ perQuestionFeedback = true }: { perQuestionFeedback?: boolean } = {},
+) {
 	const [index, setIndex] = useState(0);
 	const [revision, setRevision] = useState(0);
 	const [entries, setEntries] = useState<PracticeEntry<T>[]>(() =>
@@ -116,16 +119,17 @@ export function usePracticeFlow<T>(total: number) {
 		setEntries(next);
 		const kind =
 			correct === true ? "correct" : correct === false ? "wrong" : "received";
-		setCue({
-			kind,
-			text:
-				kind === "correct"
-					? "ถูกต้องค่ะ"
-					: kind === "wrong"
-						? "ไม่เป็นไร ไปต่อกันนะคะ"
-						: "รับคำตอบแล้วค่ะ",
-			audioSrc: patientAudioManifest.feedback[kind],
-		});
+		if (perQuestionFeedback)
+			setCue({
+				kind,
+				text:
+					kind === "correct"
+						? "ถูกต้องค่ะ"
+						: kind === "wrong"
+							? "ไม่เป็นไร ไปต่อกันนะคะ"
+							: "รับคำตอบแล้วค่ะ",
+				audioSrc: patientAudioManifest.feedback[kind],
+			});
 		const count = next.filter((entry) => entry.status === "answered").length;
 		const afterFeedback = () => {
 			clearTimer();
@@ -154,7 +158,11 @@ export function usePracticeFlow<T>(total: number) {
 		pendingStep.current = afterFeedback;
 		timer.current = setTimeout(
 			afterFeedback,
-			patientAudioManifest.feedback[kind] ? 20000 : 1800,
+			perQuestionFeedback
+				? patientAudioManifest.feedback[kind]
+					? 20000
+					: 1800
+				: 0,
 		);
 		return true;
 	}

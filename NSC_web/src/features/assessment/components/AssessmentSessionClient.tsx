@@ -6,6 +6,9 @@ import {
 	practiceQuietButton,
 	practiceAction,
 	practiceMic,
+	practiceImageScene,
+	practiceImageHeading,
+	practiceControls,
 } from "@/features/training/components/practiceStyles";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -346,7 +349,7 @@ export function AssessmentQuestion({
 		<div
 			className={
 				imageQuestion && isVoice
-					? "grid flex-1 items-center gap-5 py-3 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.75fr)] lg:gap-10 lg:py-2"
+					? practiceImageScene
 					: "flex flex-1 flex-col items-center justify-center gap-4 py-3"
 			}
 		>
@@ -357,7 +360,11 @@ export function AssessmentQuestion({
 				<h1
 					ref={heading}
 					tabIndex={-1}
-					className={`max-w-4xl text-balance text-center font-semibold leading-snug text-[#31584f] outline-none ${question.interactionType === "repeat_after" ? "text-4xl sm:text-5xl" : "text-3xl sm:text-4xl"}`}
+					className={
+						question.interactionType === "repeat_after"
+							? "max-w-4xl text-balance text-center text-4xl font-semibold leading-snug text-[#31584f] outline-none sm:text-5xl"
+							: practiceImageHeading
+					}
 				>
 					{prompt}
 				</h1>
@@ -370,7 +377,7 @@ export function AssessmentQuestion({
 					/>
 				)}
 			</div>
-			<div className="flex w-full min-w-0 flex-col items-center justify-center gap-4 lg:gap-5">
+			<div className={practiceControls}>
 				{answered ? (
 					<p className="flex min-h-36 items-center gap-3 text-2xl font-semibold text-[#118a82]">
 						<Check aria-hidden="true" className="h-12 w-12" />
