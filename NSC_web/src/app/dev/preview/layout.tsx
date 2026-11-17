@@ -44,6 +44,12 @@ export default function Layout({ children }: { children: ReactNode }) {
 						</Link>
 						<Link
 							className="rounded-xl px-3 py-3 hover:bg-[#edf8f3]"
+							href="/dev/preview/comprehension"
+						>
+							ฟังและเข้าใจ
+						</Link>
+						<Link
+							className="rounded-xl px-3 py-3 hover:bg-[#edf8f3]"
 							href="/dev/preview/feedback"
 						>
 							หน้ากำลังใจ

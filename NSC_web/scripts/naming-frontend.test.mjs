@@ -1316,6 +1316,235 @@ test("Repetition 10-item flow encourages at five and ten and returns to an unfin
 	assert.deepEqual(milestones, [5, 10]);
 });
 
+const comprehension = load(
+	"src/features/training/data/comprehensionCatalog.ts",
+	{
+		"./namingCatalog": catalog,
+		"./patientAudioManifest": {
+			patientAudioManifest: { comprehensionQuestions: {} },
+		},
+	},
+);
+test("Comprehension matches 90 supplied items, with personal examples kept out of patient prompts", () => {
+	const expected = [
+		"หมา|ปลา|หมู|เสื้อ|ปากกา|เก้าอี้|หวี|กล้วย|องุ่น|ไข่ต้ม",
+		"แมว|ไก่|วัว|โต๊ะ|กางเกง|รถยนต์|แปรงสีฟัน|ส้ม|สับปะรด|ไอศกรีม",
+		"จระเข้|เป็ด|ช้าง|แก้วน้ำ|พัดลม|รองเท้า|เตียง|แอปเปิ้ล|มะละกอ|น้ำส้ม",
+		"คุณชื่อ (สมหญิง) ใช่หรือไม่|คุณเป็น ผู้ชาย ใช่หรือไม่|คุณเป็น หมอ ใช่หรือไม่|บ้านของคุณอยู่ที่ กรุงเทพ ใช่หรือไม่|บ้านของคุณอยู่ที่ ลำปาง ใช่หรือไม่|ตอนนี้คุณกำลังลืมตา ใช่หรือไม่|คุณกินข้าว เมื่อหิว ใช่หรือไม่|สุนัขมี 4 ขา ใช่หรือไม่|ไฟมีความร้อน ใช่หรือไม่|แมวมีปีก ใช่หรือไม่",
+		"คุณชื่อ (สมชาย) ใช่หรือไม่|คุณเป็น ผู้หญิง ใช่หรือไม่|คุณเป็น ตำรวจ ใช่หรือไม่|บ้านของคุณอยู่ที่ กรุงเทพ ใช่หรือไม่|บ้านของคุณอยู่ที่ ลำปาง ใช่หรือไม่|ตอนนี้คุณกำลังหลับตา ใช่หรือไม่|คุณนอนหลับ เมื่อง่วงนอน ใช่หรือไม่|กล้วยสุกมีสีเหลือง ใช่หรือไม่|มะนาวมีรสหวาน ใช่หรือไม่|สุนัขหมายถึงหมา ใช่หรือไม่",
+		"คุณชื่อ (สมหมาย) ใช่หรือไม่|คุณเป็น ผู้ชาย ใช่หรือไม่|คุณเป็น ครู ใช่หรือไม่|บ้านของคุณอยู่ที่ กรุงเทพ ใช่หรือไม่|บ้านของคุณอยู่ที่ ลำปาง ใช่หรือไม่|ตอนนี้คุณกำลังหลับตา ใช่หรือไม่|คุณนอนหลับ เมื่อหิว ใช่หรือไม่|แมวร้อง เมี้ยวเมี้ยว ใช่หรือไม่|น้ำแข็งมีความเย็น ใช่หรือไม่|พริกมีรสเปรี้ยว ใช่หรือไม่",
+		"ช้างตัวเล็กกว่ามด ใช่หรือไม่|หู ใช้สำหรับฟังเสียง ใช่หรือไม่|มือ ใช้สำหรับหยิบจับสิ่งของ ใช่หรือไม่|แปรงสีฟันใช้สำหรับสระผม ใช่หรือไม่|ร่มใช้สำหรับกันฝน ใช่หรือไม่|โทรศัพท์ใช้สำหรับดูเวลาและคุยสาย ใช่หรือไม่|แว่นตาใช้สำหรับใส่ที่ปาก ใช่หรือไม่|วันเสาร์มาก่อนวันศุกร์ ใช่หรือไม่|เราต้องถุงเท้าก่อนใส่รองเท้า ใช่หรือไม่|เดือนกุมภาพันธ์มาก่อนเดือนกันยายน ใช่หรือไม่",
+		"ปลาอาศัยอยู่ในน้ำ ใช่หรือไม่|ตา ใช้สำหรับพูด ใช่หรือไม่|เท้า ใช้สำหรับเดิน ใช่หรือไม่|ช้อนใช้สำหรับตักข้าว ใช่หรือไม่|ผ้าเช็ดตัวใช้สำหรับดื่มน้ำ ใช่หรือไม่|ตู้เย็นใช้สำหรับอุ่นอาหารให้ร้อน ใช่หรือไม่|เราใช้มีดตักข้าว ใช่หรือไม่|พระอาทิตย์ขึ้นทางทิศตะวันตก ใช่หรือไม่|เมื่อฝนตกเราต้องกางร่ม ใช่หรือไม่|เดือนพฤษภาคมมาก่อนเดือนมีนาคม ใช่หรือไม่",
+		"นกบินได้ ใช่หรือไม่|จมูก ใช้สำหรับดมกลิ่นและหายใจ ใช่หรือไม่|ปาก ใช้สำหรับมองเห็น ใช่หรือไม่|หมอน ใช้สำหรับจัดแต่งทรงผม ใช่หรือไม่|สบู่ใช้สำหรับทำความสะอาดร่างกาย ใช่หรือไม่|กรรไกรใช้สำหรับตัดกระดาษ ใช่หรือไม่|เราใช้หวีตัดผม ใช่หรือไม่|น้ำเน่าเสียเกิดจากการทิ้งขยะลงแม่น้ำ ใช่หรือไม่|คุณกินส้มโดยไม่ปลอกเปลือก ใช่หรือไม่|อากาศร้อนมากในช่วงเดือนธันวาคม ใช่หรือไม่",
+	];
+	assert.equal(comprehension.comprehensionCatalog.length, 9);
+	const all = comprehension.comprehensionCatalog.flatMap(
+		(set) => set.questions,
+	);
+	assert.equal(new Set(all.map((q) => q.id)).size, 90);
+	comprehension.comprehensionCatalog.forEach((set, i) => {
+		assert.equal(set.questions.length, 10);
+		assert.equal(
+			set.questions
+				.map((q) => q.target ?? q.sourcePromptText ?? q.promptText)
+				.join("|"),
+			expected[i],
+		);
+		assert.equal(comprehension.pendingComprehensionAudio(set).length, 10);
+	});
+	const personal = all.filter((q) => q.personalField);
+	assert.equal(personal.length, 15);
+	assert(
+		personal.every((q) => !q.personalizationReady && /…/.test(q.promptText)),
+	);
+	assert(
+		personal.every(
+			(q) => !/สมหญิง|สมชาย|สมหมาย|กรุงเทพ|ลำปาง/.test(q.promptText),
+		),
+	);
+});
+test("All 30 Comprehension picture targets and distractors reuse existing Naming assets without answer labels", () => {
+	const known = new Set(
+		catalog.namingCatalog.flatMap((set) =>
+			set.questions.map((q) => q.imageSrc),
+		),
+	);
+	for (const q of comprehension.comprehensionCatalog
+		.slice(0, 3)
+		.flatMap((set) => set.questions)) {
+		assert.equal(q.choices.length, 3);
+		assert.equal(new Set(q.choices.map((c) => c.imageSrc)).size, 3);
+		assert(
+			q.choices.every(
+				(c) =>
+					known.has(c.imageSrc) &&
+					fs.existsSync(path.join(root, "public", c.imageSrc)),
+			),
+		);
+		assert(q.choices.every((c) => !c.label.includes(q.target)));
+		const target = catalog.namingCatalog
+			.flatMap((set) => set.questions)
+			.find((item) => item.answer === q.target);
+		assert.equal(
+			q.choices.find((c) => c.id === q.correctChoiceId).imageSrc,
+			target.imageSrc,
+		);
+		assert.equal(
+			comprehension.evaluateComprehensionChoice(q, q.correctChoiceId),
+			true,
+		);
+		assert.equal(
+			comprehension.evaluateComprehensionChoice(
+				q,
+				q.choices.find((c) => c.id !== q.correctChoiceId).id,
+			),
+			false,
+		);
+	}
+	const set = comprehension.comprehensionCatalog[3];
+	assert.throws(() =>
+		comprehension.evaluateComprehensionChoice(set.questions[0], "yes"),
+	);
+	assert.equal(
+		comprehension.evaluateComprehensionChoice(set.questions[5], "yes"),
+		undefined,
+	);
+	assert.equal(
+		comprehension.evaluateComprehensionChoice(set.questions[9], "no"),
+		true,
+	);
+	assert.equal(
+		comprehension.evaluateComprehensionChoice(
+			comprehension.comprehensionCatalog[8].questions[9],
+			"yes",
+		),
+		undefined,
+	);
+});
+test("Comprehension backend mapping gates unresolved personal prompts and sends actual choices, not voice or fabricated grades", async () => {
+	const requests = [];
+	const api = load(
+		"src/features/training/services/comprehensionFrontendService.ts",
+		{
+			"../data/comprehensionCatalog": comprehension,
+			"../data/namingCatalog": catalog,
+			"../data/patientAudioManifest": {
+				approvedPatientAudio: (value) => value,
+			},
+		},
+		{
+			FormData,
+			fetch: async (url, options) => {
+				requests.push({ url, ...options });
+				return { ok: true, json: async () => ({ isCorrect: false }) };
+			},
+		},
+	);
+	const set = comprehension.comprehensionCatalog[3];
+	const items = set.questions.map((q, i) => ({
+		questionId: 100 + i,
+		orderIndex: i + 1,
+		question: {
+			questionType: "COMPREHENSION",
+			ComprehensionQuestion: [{ questionText: q.sourcePromptText }],
+		},
+	}));
+	const pending = api.matchComprehensionSet(
+		{ setQuestions: [...items].reverse() },
+		"4",
+	);
+	assert.equal(comprehension.pendingComprehensionData(pending).length, 5);
+	assert(!pending.questions[0].promptText.includes("สมหญิง"));
+	await assert.rejects(
+		api.sendComprehensionResponse("1", "100", pending.questions[0], {
+			selectedOptionId: "yes",
+		}),
+	);
+	assert.equal(requests.length, 0);
+	items[0].question.ComprehensionQuestion[0] = {
+		questionText: set.questions[0].sourcePromptText,
+		resolvedQuestionText: "คุณชื่อ ทดสอบ ใช่หรือไม่",
+		personalizationComplete: true,
+	};
+	const ready = api.matchComprehensionSet({ setQuestions: items }, "4");
+	assert.equal(ready.questions[0].promptText, "คุณชื่อ ทดสอบ ใช่หรือไม่");
+	assert.equal(ready.questions[0].personalizationReady, true);
+	assert.equal(ready.questions[0].questionAudioSrc, undefined);
+	assert.equal(
+		(
+			await api.sendComprehensionResponse("1", "100", ready.questions[0], {
+				selectedOptionId: "no",
+				responseTimeMs: 1000,
+			})
+		).correct,
+		false,
+	);
+	assert.equal(requests[0].body.get("answerBoolean"), "false");
+	assert(!requests[0].body.has("voiceFile"));
+	assert(!requests[0].body.has("isCorrect"));
+	assert.throws(() =>
+		api.matchComprehensionSet(
+			{ setQuestions: [...items.slice(1), items[1]] },
+			"4",
+		),
+	);
+	const q = comprehension.comprehensionCatalog[0].questions[0];
+	await api.sendComprehensionResponse("1", "101", q, {
+		selectedOptionId: q.correctChoiceId,
+	});
+	assert.equal(requests[1].body.get("answerImageUrl"), q.choices[0].imageSrc);
+	assert(!requests[1].body.has("answerBoolean"));
+});
+test("Comprehension patient UI never displays unfilled personal templates and delegates valid choices to the assessment UI", () => {
+	const ui = load(
+		"src/features/training/components/ComprehensionTrainingClient.tsx",
+		{
+			"react/jsx-runtime": jsxRuntime,
+			react: hooks().react,
+			"next/link": { default: "a" },
+			"lucide-react": icons,
+			"@/features/auth/services/authSession": {},
+			"../data/comprehensionCatalog": comprehension,
+			"@/features/assessment/components/AssessmentSessionClient": {
+				AssessmentQuestion: "choices",
+			},
+			"../data/patientAudioManifest": {},
+			"../hooks/useNamingMedia": {},
+			"../hooks/usePracticeFlow": {},
+			"../services/comprehensionFrontendService": {},
+			"./NamingLibrary": {},
+			"./PracticeFeedback": {},
+			"./QuestionDots": {},
+			"./practiceStyles": load(
+				"src/features/training/components/practiceStyles.ts",
+			),
+		},
+	);
+	const personal = comprehension.comprehensionCatalog[3].questions[0];
+	const tree = ui.ComprehensionQuestionView({ question: personal });
+	assert(textOf(tree).includes("รอคำถามของคุณ"));
+	assert(!/สมหญิง|คุณชื่อ|…/.test(textOf(tree)));
+	assert(!flatten(tree).some((n) => n.type === "choices"));
+	const image = comprehension.comprehensionCatalog[0].questions[0];
+	assert.equal(
+		ui.ComprehensionQuestionView({ question: image }).type,
+		"choices",
+	);
+	assert(
+		!/ง่าย|ปานกลาง|ยาก/.test(textOf(ui.ComprehensionLibrary({ preview: true }))),
+	);
+});
+test("Comprehension incorrect answers get supportive wording and automatically advance", () => {
+	const h = practiceHarness(10, {
+		feedbackMessages: { wrong: "ไม่เป็นไรนะคะ ไปต่อกันค่ะ" },
+	});
+	h.render().complete({ selected: "no" }, false);
+	assert.equal(h.render().cue.text, "ไม่เป็นไรนะคะ ไปต่อกันค่ะ");
+	assert(!/ผิด|ไม่ได้/.test(h.render().cue.text));
+	h.fire();
+	assert.equal(h.render().index, 1);
+});
+
 test("feedback audio continues once on end and cannot advance after cancellation", async () => {
 	const h = hooks();
 	const audios = [];

@@ -16,7 +16,15 @@ export type PracticeCue = {
 
 export function usePracticeFlow<T>(
 	total: number,
-	{ perQuestionFeedback = true }: { perQuestionFeedback?: boolean } = {},
+	{
+		perQuestionFeedback = true,
+		feedbackMessages,
+	}: {
+		perQuestionFeedback?: boolean;
+		feedbackMessages?: Partial<
+			Record<"correct" | "wrong" | "received", string>
+		>;
+	} = {},
 ) {
 	const [index, setIndex] = useState(0);
 	const [revision, setRevision] = useState(0);
@@ -123,11 +131,12 @@ export function usePracticeFlow<T>(
 			setCue({
 				kind,
 				text:
-					kind === "correct"
+					feedbackMessages?.[kind] ??
+					(kind === "correct"
 						? "ถูกต้องค่ะ"
 						: kind === "wrong"
 							? "ไม่เป็นไร ไปต่อกันนะคะ"
-							: "รับคำตอบแล้วค่ะ",
+							: "รับคำตอบแล้วค่ะ"),
 				audioSrc: patientAudioManifest.feedback[kind],
 			});
 		const count = next.filter((entry) => entry.status === "answered").length;

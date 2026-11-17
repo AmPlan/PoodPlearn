@@ -55,6 +55,9 @@ export function TodayTrainingClient() {
 						const repetition = /repetition|พูดตาม/i.test(
 							`${plan.categoryName} ${plan.moduleName}`,
 						);
+						const comprehension = /comprehension|ความเข้าใจ|ฟังและเข้าใจ/i.test(
+							`${plan.categoryName} ${plan.moduleName}`,
+						);
 						return (
 							<section
 								key={plan.dailyPlanScheduleId}
@@ -78,9 +81,9 @@ export function TodayTrainingClient() {
 								</h2>
 								{completed ? (
 									<p className="mt-4 text-xl text-[#118a82]">ฝึกแล้ว</p>
-								) : naming || repetition ? (
+								) : naming || repetition || comprehension ? (
 									<Link
-										href={`/patient/training/${repetition ? "repetition" : "naming"}/assigned/${encodeURIComponent(plan.assignedSetId)}?schedule=${encodeURIComponent(plan.dailyPlanScheduleId)}`}
+										href={`/patient/training/${repetition ? "repetition" : comprehension ? "comprehension" : "naming"}/assigned/${encodeURIComponent(plan.assignedSetId)}?schedule=${encodeURIComponent(plan.dailyPlanScheduleId)}`}
 										className={`${namingButton} mt-5 min-h-20 w-full gap-3`}
 									>
 										<Play aria-hidden="true" className="h-8 w-8" />
