@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse, after } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 import { AUTH_COOKIE_NAME, verifySession } from '@/lib/auth';
 import { calculateAssessmentItemScore, getAssessmentCategoryKey, resolveAssessmentCategories } from '@/lib/assessmentCategories';
 import { prisma } from '@/lib/prisma';
-import { verifyAnswer, verifyAnswerWithComparison } from '@/lib/grader';
+import { verifyAnswer } from '@/lib/grader';
 
 interface AssessmentInput {
   questionId: number;

@@ -1,0 +1,415 @@
+# สคริปต์เสียง Gemini สำหรับพูดเพลิน
+
+รายการนี้จัดจากโค้ดล่าสุด แยกโจทย์ออกจากเฉลยแล้ว ไม่ได้สร้างหรือเปิดใช้เสียงใหม่ในโปรแกรม
+
+- รายการที่อัดได้เลย: 306 ประโยค/คำไม่ซ้ำ (รวมเสียงคำถาม คำตอบรับ คำชม และกลับไปทำข้อค้าง)
+- คำชมที่ระบบสุ่มใช้: 33 สคริปต์ ครอบคลุมครบ 5/10/15/20/25/30 ข้อ
+- ภาพนี้คืออะไร: มีไฟล์ที่ยืนยันและใช้แล้ว ไม่ต้องอัดใหม่
+- Naming มีเสียงคำตอบเก่า 134 คำ รอตรวจและยืนยันก่อนเปิดใช้; ผ้าเช็ดตัวไม่มีไฟล์คำตอบเก่า
+- คำใบ้ Naming ทั้ง 2 ขั้นและคำถามที่เติมชื่อ/จังหวัด: รอยืนยันก่อนอัด
+- เสียงจบและข้อถัดไปในส่วนข้อเสนอ ยังไม่ได้เชื่อมเหตุการณ์ในโค้ด
+
+## วิธีใช้
+
+เริ่มที่ 01-record-now-unique.csv หนึ่งแถวต่อหนึ่งไฟล์ หากข้อความซ้ำใช้ไฟล์เดียวกันได้ ดูชื่อช่องที่ต้องเชื่อมใน 02-slot-mapping.csv
+อย่าอ่านชื่อไฟล์ เลขข้อ เฉลยในวงเล็บ หรือคำอธิบายสถานะออกเสียง สำหรับ … ให้เว้นจังหวะ ไม่อ่านว่าจุดจุดจุด
+ตัวเลขเปลี่ยนเป็นคำไทยเพื่อให้อ่านตรงกัน และขยาย พ.ศ. เป็นพุทธศักราช แต่เนื้อหาโจทย์ในแอปไม่ได้ถูกแก้
+เสียงต้องเป็นประโยคจากรายการเท่านั้น ไม่เติมคำใบ้ คำเฉลย เสียงดนตรี หรือเสียงนำทางใหม่เอง
+
+## รายการแยกตามส่วน
+
+### assessment
+
+- `assessment-01` [record] คุณชื่ออะไร — `assessment-01.wav`
+- `assessment-02` [record] คุณนามสกุลอะไร — `assessment-02.wav`
+- `assessment-03` [record] บ้านของคุณอยู่ที่จังหวัดอะไร — `assessment-03.wav`
+- `assessment-04` [record] หนึ่งสัปดาห์มีกี่วัน — `assessment-04.wav`
+- `assessment-05` [record] เกลือมีรส… — `assessment-05.wav`
+- `assessment-06` [record] คุณทำอะไรเมื่อหิวข้าว — `assessment-06.wav`
+- `assessment-07` [record] ชี้ภาพกล้วย — `assessment-07.wav`
+- `assessment-08` [record] ชี้ภาพเก้าอี้ — `assessment-08.wav`
+- `assessment-09` [record] ชี้ภาพแมว — `assessment-09.wav`
+- `assessment-10` [record] ชี้ภาพพัดลม — `assessment-10.wav`
+- `assessment-11` [record] คุณเป็น ผู้ชาย ใช่หรือไม่ — `assessment-11.wav`
+- `assessment-12` [record] บ้านของคุณอยู่ที่ ลำปาง ใช่หรือไม่ — `assessment-12.wav`
+- `assessment-13` [record] ช้างตัวเล็กกว่ามด ใช่หรือไม่ — `assessment-13.wav`
+- `assessment-14` [record] เดือนพฤษภาคมมาก่อนเดือนมีนาคม ใช่หรือไม่ — `assessment-14.wav`
+- `assessment-15` [record] คุณกินส้มโดยไม่ปลอกเปลือก ใช่หรือไม่ — `assessment-15.wav`
+- `assessment-16` [record] อากาศร้อนมากในช่วงเดือนธันวาคม ใช่หรือไม่ — `assessment-16.wav`
+- `assessment-17` [record] เตียง — `assessment-17.wav`
+- `assessment-18` [record] แตงโม — `assessment-18.wav`
+- `assessment-19` [record] โทรศัพท์ — `assessment-19.wav`
+- `assessment-20` [record] รถติดบนถนน — `assessment-20.wav`
+- `assessment-21` [record] เมื่อคืนฝนตกหนักมาก — `assessment-21.wav`
+- `assessment-22` [record] แม่ไปซื้อกับข้าวที่ตลาด — `assessment-22.wav`
+- `assessment-23` [record] การฝึกพูดทุกวันช่วยให้พูดเก่งขึ้น — `assessment-23.wav`
+- `assessment-24` [existing-approved] ภาพนี้คืออะไร
+- `assessment-25` [existing-approved] ภาพนี้คืออะไร
+- `assessment-26` [existing-approved] ภาพนี้คืออะไร
+- `assessment-27` [existing-approved] ภาพนี้คืออะไร
+- `assessment-28` [existing-approved] ภาพนี้คืออะไร
+- `assessment-29` [existing-approved] ภาพนี้คืออะไร
+- `assessment-30` [existing-approved] ภาพนี้คืออะไร
+
+### repetition
+
+- `repetition-easy-1-1` [record] หมา — `repetition-easy-1-1.wav`
+- `repetition-easy-1-2` [record] ปลา — `repetition-easy-1-2.wav`
+- `repetition-easy-1-3` [record] หมู — `repetition-easy-1-3.wav`
+- `repetition-easy-1-4` [record] เสื้อ — `repetition-easy-1-4.wav`
+- `repetition-easy-1-5` [record] หวี — `repetition-easy-1-5.wav`
+- `repetition-easy-1-6` [record] เก้าอี้ — `repetition-easy-1-6.wav`
+- `repetition-easy-1-7` [record] ปากกา — `repetition-easy-1-7.wav`
+- `repetition-easy-1-8` [record] กล้วยหอม — `repetition-easy-1-8.wav`
+- `repetition-easy-1-9` [record] กินข้าว — `repetition-easy-1-9.wav`
+- `repetition-easy-1-10` [record] ไข่ต้ม — `repetition-easy-1-10.wav`
+- `repetition-easy-2-1` [record] แมว — `repetition-easy-2-1.wav`
+- `repetition-easy-2-2` [record] ไก่ — `repetition-easy-2-2.wav`
+- `repetition-easy-2-3` [record] วัว — `repetition-easy-2-3.wav`
+- `repetition-easy-2-4` [record] โต๊ะ — `repetition-easy-2-4.wav`
+- `repetition-easy-2-5` [record] ส้ม — `repetition-easy-2-5.wav`
+- `repetition-easy-2-6` [record] รถยนต์ — `repetition-easy-2-6.wav`
+- `repetition-easy-2-7` [record] ช้อนส้อม — `repetition-easy-2-7.wav`
+- `repetition-easy-2-8` [record] กางเกง — `repetition-easy-2-8.wav`
+- `repetition-easy-2-9` [record] ดอกไม้ — `repetition-easy-2-9.wav`
+- `repetition-easy-2-10` [record] อาบน้ำ — `repetition-easy-2-10.wav`
+- `repetition-easy-3-1` [record] เตียง — `assessment-17.wav`
+- `repetition-easy-3-2` [record] เป็ด — `repetition-easy-3-2.wav`
+- `repetition-easy-3-3` [record] ช้าง — `repetition-easy-3-3.wav`
+- `repetition-easy-3-4` [record] ข้าว — `repetition-easy-3-4.wav`
+- `repetition-easy-3-5` [record] สิบ — `repetition-easy-3-5.wav`
+- `repetition-easy-3-6` [record] เครื่องบิน — `repetition-easy-3-6.wav`
+- `repetition-easy-3-7` [record] แปรงฟัน — `repetition-easy-3-7.wav`
+- `repetition-easy-3-8` [record] แก้วน้ำ — `repetition-easy-3-8.wav`
+- `repetition-easy-3-9` [record] พัดลม — `repetition-easy-3-9.wav`
+- `repetition-easy-3-10` [record] รองเท้า — `repetition-easy-3-10.wav`
+- `repetition-medium-1-1` [record] แปรงสีฟัน — `repetition-medium-1-1.wav`
+- `repetition-medium-1-2` [record] มะละกอ — `repetition-medium-1-2.wav`
+- `repetition-medium-1-3` [record] วิทยุ — `repetition-medium-1-3.wav`
+- `repetition-medium-1-4` [record] กากบาท — `repetition-medium-1-4.wav`
+- `repetition-medium-1-5` [record] หนึ่งร้อยห้าสิบ — `repetition-medium-1-5.wav`
+- `repetition-medium-1-6` [record] ฉันสบายดี — `repetition-medium-1-6.wav`
+- `repetition-medium-1-7` [record] วันนี้วันเสาร์ — `repetition-medium-1-7.wav`
+- `repetition-medium-1-8` [record] โทรศัพท์ดังแล้ว — `repetition-medium-1-8.wav`
+- `repetition-medium-1-9` [record] สี่เหลี่ยมจตุรัส — `repetition-medium-1-9.wav`
+- `repetition-medium-1-10` [record] เด็กๆไปเดินเล่น — `repetition-medium-1-10.wav`
+- `repetition-medium-2-1` [record] สับปะรด — `repetition-medium-2-1.wav`
+- `repetition-medium-2-2` [record] จระเข้ — `repetition-medium-2-2.wav`
+- `repetition-medium-2-3` [record] โทรทัศน์ — `repetition-medium-2-3.wav`
+- `repetition-medium-2-4` [record] ไม้ขีดไฟ — `repetition-medium-2-4.wav`
+- `repetition-medium-2-5` [record] สองร้อยเจ็ดสิบ — `repetition-medium-2-5.wav`
+- `repetition-medium-2-6` [record] อากาศร้อนมาก — `repetition-medium-2-6.wav`
+- `repetition-medium-2-7` [record] ท้องฟ้ามืดแล้ว — `repetition-medium-2-7.wav`
+- `repetition-medium-2-8` [record] แม่กลับมาถึงบ้าน — `repetition-medium-2-8.wav`
+- `repetition-medium-2-9` [record] สี่สิบห้าเปอร์เซ็นต์ — `repetition-medium-2-9.wav`
+- `repetition-medium-2-10` [record] น้ำในแก้วหมดแล้ว — `repetition-medium-2-10.wav`
+- `repetition-medium-3-1` [record] ไอศกรีม — `repetition-medium-3-1.wav`
+- `repetition-medium-3-2` [record] รองเท้าแตะ — `repetition-medium-3-2.wav`
+- `repetition-medium-3-3` [record] โทรศัพท์ — `assessment-19.wav`
+- `repetition-medium-3-4` [record] หัวแม่มือ — `repetition-medium-3-4.wav`
+- `repetition-medium-3-5` [record] ร้อยแปดสิบสาม — `repetition-medium-3-5.wav`
+- `repetition-medium-3-6` [record] ผมกินข้าวแล้ว — `repetition-medium-3-6.wav`
+- `repetition-medium-3-7` [record] สุนัขเห่าดัง — `repetition-medium-3-7.wav`
+- `repetition-medium-3-8` [record] คุณหมอนัดตอนเช้า — `repetition-medium-3-8.wav`
+- `repetition-medium-3-9` [record] น้องสาวทำการบ้าน — `repetition-medium-3-9.wav`
+- `repetition-medium-3-10` [record] รถติดบนถนน — `assessment-20.wav`
+- `repetition-hard-1-1` [record] ดอกไม้ในสวนสวยงาม — `repetition-hard-1-1.wav`
+- `repetition-hard-1-2` [record] วันนี้ท้องฟ้าแจ่มใส — `repetition-hard-1-2.wav`
+- `repetition-hard-1-3` [record] สุนัขที่บ้านตัวใหญ่มาก — `repetition-hard-1-3.wav`
+- `repetition-hard-1-4` [record] ตอนเช้าอากาศเย็นสบาย — `repetition-hard-1-4.wav`
+- `repetition-hard-1-5` [record] แม่ครัวทำต้มยำกุ้งน้ำข้น — `repetition-hard-1-5.wav`
+- `repetition-hard-1-6` [record] โรงพยาบาลอยู่ไม่ไกลมาก — `repetition-hard-1-6.wav`
+- `repetition-hard-1-7` [record] ฉันเดินเล่นที่สวนสาธารณะ — `repetition-hard-1-7.wav`
+- `repetition-hard-1-8` [record] ต้นไม้ใหญ่ให้ร่มเงาเย็นสบาย — `repetition-hard-1-8.wav`
+- `repetition-hard-1-9` [record] การออกกำลังกายดีต่อสุขภาพ — `repetition-hard-1-9.wav`
+- `repetition-hard-1-10` [record] พระธาตุลำปางหลวงอยู่ที่จังหวัดลำปาง — `repetition-hard-1-10.wav`
+- `repetition-hard-2-1` [record] พรุ่งนี้ฉันจะไปเที่ยว — `repetition-hard-2-1.wav`
+- `repetition-hard-2-2` [record] ฉันชอบดื่มน้ำมะนาว — `repetition-hard-2-2.wav`
+- `repetition-hard-2-3` [record] ฉันตื่นนอนตอนหกโมงเช้า — `repetition-hard-2-3.wav`
+- `repetition-hard-2-4` [record] นกกาเกาะอยู่บนกิ่งไม้ — `repetition-hard-2-4.wav`
+- `repetition-hard-2-5` [record] ฉันชอบกินผลไม้รสเปรี้ยว — `repetition-hard-2-5.wav`
+- `repetition-hard-2-6` [record] แม่ไปซื้อกับข้าวที่ตลาด — `assessment-22.wav`
+- `repetition-hard-2-7` [record] แสงแดดตอนเช้าส่องเข้ามาในห้อง — `repetition-hard-2-7.wav`
+- `repetition-hard-2-8` [record] สุนัขที่บ้านของฉันตัวใหญ่มาก — `repetition-hard-2-8.wav`
+- `repetition-hard-2-9` [record] พรุ่งนี้เช้าฉันจะไปโรงพยาบาล — `repetition-hard-2-9.wav`
+- `repetition-hard-2-10` [record] การฝึกพูดทุกวันช่วยให้พูดชัดขึ้น — `repetition-hard-2-10.wav`
+- `repetition-hard-3-1` [record] คุณหมอบอกให้พักผ่อน — `repetition-hard-3-1.wav`
+- `repetition-hard-3-2` [record] เมื่อคืนฝนตกหนักมาก — `assessment-21.wav`
+- `repetition-hard-3-3` [record] ฉันลืมกุญแจไว้บนโต๊ะ — `repetition-hard-3-3.wav`
+- `repetition-hard-3-4` [record] แม่บ้านทำความสะอาดบ้าน — `repetition-hard-3-4.wav`
+- `repetition-hard-3-5` [record] วันนี้ฉันเดินได้เยอะขึ้นมาก — `repetition-hard-3-5.wav`
+- `repetition-hard-3-6` [record] พรุ่งนี้ครอบครัวจะมาเยี่ยมฉัน — `repetition-hard-3-6.wav`
+- `repetition-hard-3-7` [record] ล้างมือให้สะอาดก่อนกินอาหาร — `repetition-hard-3-7.wav`
+- `repetition-hard-3-8` [record] ฉันชอบนั่งฟังเพลงเก่าเก่าตอนเช้า — `repetition-hard-3-8.wav`
+- `repetition-hard-3-9` [record] เด็กนักเรียนดีใจเมื่อได้รับคำชม — `repetition-hard-3-9.wav`
+- `repetition-hard-3-10` [record] การฝึกพูดทุกวันช่วยให้พูดเก่งขึ้น — `assessment-23.wav`
+
+### comprehension
+
+- `comprehension-easy-1-1` [record] ชี้ภาพหมา — `comprehension-easy-1-1.wav`
+- `comprehension-easy-1-2` [record] ชี้ภาพปลา — `comprehension-easy-1-2.wav`
+- `comprehension-easy-1-3` [record] ชี้ภาพหมู — `comprehension-easy-1-3.wav`
+- `comprehension-easy-1-4` [record] ชี้ภาพเสื้อ — `comprehension-easy-1-4.wav`
+- `comprehension-easy-1-5` [record] ชี้ภาพปากกา — `comprehension-easy-1-5.wav`
+- `comprehension-easy-1-6` [record] ชี้ภาพเก้าอี้ — `assessment-08.wav`
+- `comprehension-easy-1-7` [record] ชี้ภาพหวี — `comprehension-easy-1-7.wav`
+- `comprehension-easy-1-8` [record] ชี้ภาพกล้วย — `assessment-07.wav`
+- `comprehension-easy-1-9` [record] ชี้ภาพองุ่น — `comprehension-easy-1-9.wav`
+- `comprehension-easy-1-10` [record] ชี้ภาพไข่ต้ม — `comprehension-easy-1-10.wav`
+- `comprehension-easy-2-1` [record] ชี้ภาพแมว — `assessment-09.wav`
+- `comprehension-easy-2-2` [record] ชี้ภาพไก่ — `comprehension-easy-2-2.wav`
+- `comprehension-easy-2-3` [record] ชี้ภาพวัว — `comprehension-easy-2-3.wav`
+- `comprehension-easy-2-4` [record] ชี้ภาพโต๊ะ — `comprehension-easy-2-4.wav`
+- `comprehension-easy-2-5` [record] ชี้ภาพกางเกง — `comprehension-easy-2-5.wav`
+- `comprehension-easy-2-6` [record] ชี้ภาพรถยนต์ — `comprehension-easy-2-6.wav`
+- `comprehension-easy-2-7` [record] ชี้ภาพแปรงสีฟัน — `comprehension-easy-2-7.wav`
+- `comprehension-easy-2-8` [record] ชี้ภาพส้ม — `comprehension-easy-2-8.wav`
+- `comprehension-easy-2-9` [record] ชี้ภาพสับปะรด — `comprehension-easy-2-9.wav`
+- `comprehension-easy-2-10` [record] ชี้ภาพไอศกรีม — `comprehension-easy-2-10.wav`
+- `comprehension-easy-3-1` [record] ชี้ภาพจระเข้ — `comprehension-easy-3-1.wav`
+- `comprehension-easy-3-2` [record] ชี้ภาพเป็ด — `comprehension-easy-3-2.wav`
+- `comprehension-easy-3-3` [record] ชี้ภาพช้าง — `comprehension-easy-3-3.wav`
+- `comprehension-easy-3-4` [record] ชี้ภาพแก้วน้ำ — `comprehension-easy-3-4.wav`
+- `comprehension-easy-3-5` [record] ชี้ภาพพัดลม — `assessment-10.wav`
+- `comprehension-easy-3-6` [record] ชี้ภาพรองเท้า — `comprehension-easy-3-6.wav`
+- `comprehension-easy-3-7` [record] ชี้ภาพเตียง — `comprehension-easy-3-7.wav`
+- `comprehension-easy-3-8` [record] ชี้ภาพแอปเปิ้ล — `comprehension-easy-3-8.wav`
+- `comprehension-easy-3-9` [record] ชี้ภาพมะละกอ — `comprehension-easy-3-9.wav`
+- `comprehension-easy-3-10` [record] ชี้ภาพน้ำส้ม — `comprehension-easy-3-10.wav`
+- `comprehension-medium-1-1` [wait-personalization] คุณชื่อ … ใช่หรือไม่
+- `comprehension-medium-1-2` [wait-personalization] คุณเป็น … ใช่หรือไม่
+- `comprehension-medium-1-3` [wait-personalization] คุณเป็น … ใช่หรือไม่
+- `comprehension-medium-1-4` [wait-personalization] บ้านของคุณอยู่ที่ … ใช่หรือไม่
+- `comprehension-medium-1-5` [wait-personalization] บ้านของคุณอยู่ที่ … ใช่หรือไม่
+- `comprehension-medium-1-6` [record] ตอนนี้คุณกำลังลืมตา ใช่หรือไม่ — `comprehension-medium-1-6.wav`
+- `comprehension-medium-1-7` [record] คุณกินข้าว เมื่อหิว ใช่หรือไม่ — `comprehension-medium-1-7.wav`
+- `comprehension-medium-1-8` [record] สุนัขมี สี่ ขา ใช่หรือไม่ — `comprehension-medium-1-8.wav`
+- `comprehension-medium-1-9` [record] ไฟมีความร้อน ใช่หรือไม่ — `comprehension-medium-1-9.wav`
+- `comprehension-medium-1-10` [record] แมวมีปีก ใช่หรือไม่ — `comprehension-medium-1-10.wav`
+- `comprehension-medium-2-1` [wait-personalization] คุณชื่อ … ใช่หรือไม่
+- `comprehension-medium-2-2` [wait-personalization] คุณเป็น … ใช่หรือไม่
+- `comprehension-medium-2-3` [wait-personalization] คุณเป็น … ใช่หรือไม่
+- `comprehension-medium-2-4` [wait-personalization] บ้านของคุณอยู่ที่ … ใช่หรือไม่
+- `comprehension-medium-2-5` [wait-personalization] บ้านของคุณอยู่ที่ … ใช่หรือไม่
+- `comprehension-medium-2-6` [record] ตอนนี้คุณกำลังหลับตา ใช่หรือไม่ — `comprehension-medium-2-6.wav`
+- `comprehension-medium-2-7` [record] คุณนอนหลับ เมื่อง่วงนอน ใช่หรือไม่ — `comprehension-medium-2-7.wav`
+- `comprehension-medium-2-8` [record] กล้วยสุกมีสีเหลือง ใช่หรือไม่ — `comprehension-medium-2-8.wav`
+- `comprehension-medium-2-9` [record] มะนาวมีรสหวาน ใช่หรือไม่ — `comprehension-medium-2-9.wav`
+- `comprehension-medium-2-10` [record] สุนัขหมายถึงหมา ใช่หรือไม่ — `comprehension-medium-2-10.wav`
+- `comprehension-medium-3-1` [wait-personalization] คุณชื่อ … ใช่หรือไม่
+- `comprehension-medium-3-2` [wait-personalization] คุณเป็น … ใช่หรือไม่
+- `comprehension-medium-3-3` [wait-personalization] คุณเป็น … ใช่หรือไม่
+- `comprehension-medium-3-4` [wait-personalization] บ้านของคุณอยู่ที่ … ใช่หรือไม่
+- `comprehension-medium-3-5` [wait-personalization] บ้านของคุณอยู่ที่ … ใช่หรือไม่
+- `comprehension-medium-3-6` [record] ตอนนี้คุณกำลังหลับตา ใช่หรือไม่ — `comprehension-medium-2-6.wav`
+- `comprehension-medium-3-7` [record] คุณนอนหลับ เมื่อหิว ใช่หรือไม่ — `comprehension-medium-3-7.wav`
+- `comprehension-medium-3-8` [record] แมวร้อง เมี้ยวเมี้ยว ใช่หรือไม่ — `comprehension-medium-3-8.wav`
+- `comprehension-medium-3-9` [record] น้ำแข็งมีความเย็น ใช่หรือไม่ — `comprehension-medium-3-9.wav`
+- `comprehension-medium-3-10` [record] พริกมีรสเปรี้ยว ใช่หรือไม่ — `comprehension-medium-3-10.wav`
+- `comprehension-hard-1-1` [record] ช้างตัวเล็กกว่ามด ใช่หรือไม่ — `assessment-13.wav`
+- `comprehension-hard-1-2` [record] หู ใช้สำหรับฟังเสียง ใช่หรือไม่ — `comprehension-hard-1-2.wav`
+- `comprehension-hard-1-3` [record] มือ ใช้สำหรับหยิบจับสิ่งของ ใช่หรือไม่ — `comprehension-hard-1-3.wav`
+- `comprehension-hard-1-4` [record] แปรงสีฟันใช้สำหรับสระผม ใช่หรือไม่ — `comprehension-hard-1-4.wav`
+- `comprehension-hard-1-5` [record] ร่มใช้สำหรับกันฝน ใช่หรือไม่ — `comprehension-hard-1-5.wav`
+- `comprehension-hard-1-6` [record] โทรศัพท์ใช้สำหรับดูเวลาและคุยสาย ใช่หรือไม่ — `comprehension-hard-1-6.wav`
+- `comprehension-hard-1-7` [record] แว่นตาใช้สำหรับใส่ที่ปาก ใช่หรือไม่ — `comprehension-hard-1-7.wav`
+- `comprehension-hard-1-8` [record] วันเสาร์มาก่อนวันศุกร์ ใช่หรือไม่ — `comprehension-hard-1-8.wav`
+- `comprehension-hard-1-9` [record] เราต้องถุงเท้าก่อนใส่รองเท้า ใช่หรือไม่ — `comprehension-hard-1-9.wav`
+- `comprehension-hard-1-10` [record] เดือนกุมภาพันธ์มาก่อนเดือนกันยายน ใช่หรือไม่ — `comprehension-hard-1-10.wav`
+- `comprehension-hard-2-1` [record] ปลาอาศัยอยู่ในน้ำ ใช่หรือไม่ — `comprehension-hard-2-1.wav`
+- `comprehension-hard-2-2` [record] ตา ใช้สำหรับพูด ใช่หรือไม่ — `comprehension-hard-2-2.wav`
+- `comprehension-hard-2-3` [record] เท้า ใช้สำหรับเดิน ใช่หรือไม่ — `comprehension-hard-2-3.wav`
+- `comprehension-hard-2-4` [record] ช้อนใช้สำหรับตักข้าว ใช่หรือไม่ — `comprehension-hard-2-4.wav`
+- `comprehension-hard-2-5` [record] ผ้าเช็ดตัวใช้สำหรับดื่มน้ำ ใช่หรือไม่ — `comprehension-hard-2-5.wav`
+- `comprehension-hard-2-6` [record] ตู้เย็นใช้สำหรับอุ่นอาหารให้ร้อน ใช่หรือไม่ — `comprehension-hard-2-6.wav`
+- `comprehension-hard-2-7` [record] เราใช้มีดตักข้าว ใช่หรือไม่ — `comprehension-hard-2-7.wav`
+- `comprehension-hard-2-8` [record] พระอาทิตย์ขึ้นทางทิศตะวันตก ใช่หรือไม่ — `comprehension-hard-2-8.wav`
+- `comprehension-hard-2-9` [record] เมื่อฝนตกเราต้องกางร่ม ใช่หรือไม่ — `comprehension-hard-2-9.wav`
+- `comprehension-hard-2-10` [record] เดือนพฤษภาคมมาก่อนเดือนมีนาคม ใช่หรือไม่ — `assessment-14.wav`
+- `comprehension-hard-3-1` [record] นกบินได้ ใช่หรือไม่ — `comprehension-hard-3-1.wav`
+- `comprehension-hard-3-2` [record] จมูก ใช้สำหรับดมกลิ่นและหายใจ ใช่หรือไม่ — `comprehension-hard-3-2.wav`
+- `comprehension-hard-3-3` [record] ปาก ใช้สำหรับมองเห็น ใช่หรือไม่ — `comprehension-hard-3-3.wav`
+- `comprehension-hard-3-4` [record] หมอน ใช้สำหรับจัดแต่งทรงผม ใช่หรือไม่ — `comprehension-hard-3-4.wav`
+- `comprehension-hard-3-5` [record] สบู่ใช้สำหรับทำความสะอาดร่างกาย ใช่หรือไม่ — `comprehension-hard-3-5.wav`
+- `comprehension-hard-3-6` [record] กรรไกรใช้สำหรับตัดกระดาษ ใช่หรือไม่ — `comprehension-hard-3-6.wav`
+- `comprehension-hard-3-7` [record] เราใช้หวีตัดผม ใช่หรือไม่ — `comprehension-hard-3-7.wav`
+- `comprehension-hard-3-8` [record] น้ำเน่าเสียเกิดจากการทิ้งขยะลงแม่น้ำ ใช่หรือไม่ — `comprehension-hard-3-8.wav`
+- `comprehension-hard-3-9` [record] คุณกินส้มโดยไม่ปลอกเปลือก ใช่หรือไม่ — `assessment-15.wav`
+- `comprehension-hard-3-10` [record] อากาศร้อนมากในช่วงเดือนธันวาคม ใช่หรือไม่ — `assessment-16.wav`
+
+### spontaneous
+
+- `spontaneous-easy-1-1` [record] คุณชื่ออะไร — `assessment-01.wav`
+- `spontaneous-easy-1-2` [record] คุณนามสกุลอะไร — `assessment-02.wav`
+- `spontaneous-easy-1-3` [record] บ้านของคุณอยู่ที่จังหวัดอะไร — `assessment-03.wav`
+- `spontaneous-easy-1-4` [record] คุณเป็นผู้หญิงหรือผู้ชาย — `spontaneous-easy-1-4.wav`
+- `spontaneous-easy-1-5` [record] คุณมีอาชีพอะไร — `spontaneous-easy-1-5.wav`
+- `spontaneous-easy-1-6` [record] คุณเกิดวันที่เท่าไหร่ — `spontaneous-easy-1-6.wav`
+- `spontaneous-easy-1-7` [record] คุณเกิดเดือนอะไร — `spontaneous-easy-1-7.wav`
+- `spontaneous-easy-1-8` [record] คุณเกิดปีพุทธศักราชอะไร — `spontaneous-easy-1-8.wav`
+- `spontaneous-easy-1-9` [record] หนึ่งสัปดาห์มีกี่วัน — `assessment-04.wav`
+- `spontaneous-easy-1-10` [record] หนึ่งปีมีกี่เดือน — `spontaneous-easy-1-10.wav`
+- `spontaneous-easy-2-1` [record] คุณชื่ออะไร — `assessment-01.wav`
+- `spontaneous-easy-2-2` [record] คุณนามสกุลอะไร — `assessment-02.wav`
+- `spontaneous-easy-2-3` [record] บ้านของคุณอยู่ที่จังหวัดอะไร — `assessment-03.wav`
+- `spontaneous-easy-2-4` [record] คุณเป็นผู้ชายหรือผู้หญิง — `spontaneous-easy-2-4.wav`
+- `spontaneous-easy-2-5` [record] คุณมีอาชีพอะไร — `spontaneous-easy-1-5.wav`
+- `spontaneous-easy-2-6` [record] คุณเกิดวันที่เท่าไหร่ — `spontaneous-easy-1-6.wav`
+- `spontaneous-easy-2-7` [record] คุณเกิดเดือนอะไร — `spontaneous-easy-1-7.wav`
+- `spontaneous-easy-2-8` [record] คุณเกิดปีพุทธศักราชอะไร — `spontaneous-easy-1-8.wav`
+- `spontaneous-easy-2-9` [record] หนึ่งสัปดาห์มีกี่วัน — `assessment-04.wav`
+- `spontaneous-easy-2-10` [record] หนึ่งปีมีกี่เดือน — `spontaneous-easy-1-10.wav`
+- `spontaneous-easy-3-1` [record] คุณชื่ออะไร — `assessment-01.wav`
+- `spontaneous-easy-3-2` [record] คุณนามสกุลอะไร — `assessment-02.wav`
+- `spontaneous-easy-3-3` [record] บ้านของคุณอยู่ที่จังหวัดอะไร — `assessment-03.wav`
+- `spontaneous-easy-3-4` [record] คุณเป็นเพศอะไร — `spontaneous-easy-3-4.wav`
+- `spontaneous-easy-3-5` [record] คุณมีอาชีพอะไร — `spontaneous-easy-1-5.wav`
+- `spontaneous-easy-3-6` [record] คุณเกิดวันที่เท่าไหร่ — `spontaneous-easy-1-6.wav`
+- `spontaneous-easy-3-7` [record] คุณเกิดเดือนอะไร — `spontaneous-easy-1-7.wav`
+- `spontaneous-easy-3-8` [record] คุณเกิดปีพุทธศักราชอะไร — `spontaneous-easy-1-8.wav`
+- `spontaneous-easy-3-9` [record] หนึ่งสัปดาห์มีกี่วัน — `assessment-04.wav`
+- `spontaneous-easy-3-10` [record] หนึ่งปีมีกี่เดือน — `spontaneous-easy-1-10.wav`
+- `spontaneous-medium-1-1` [record] เกลือมีรส… — `assessment-05.wav`
+- `spontaneous-medium-1-2` [record] ใบไม้มีสี… — `spontaneous-medium-1-2.wav`
+- `spontaneous-medium-1-3` [record] แอปเปิ้ลเป็นผลไม้ที่มีสี… — `spontaneous-medium-1-3.wav`
+- `spontaneous-medium-1-4` [record] พระอาทิตย์ขึ้นตอน… — `spontaneous-medium-1-4.wav`
+- `spontaneous-medium-1-5` [record] ดินสอใช้สำหรับ… — `spontaneous-medium-1-5.wav`
+- `spontaneous-medium-1-6` [record] นกบินอยู่บน… — `spontaneous-medium-1-6.wav`
+- `spontaneous-medium-1-7` [record] รถวิ่งอยู่บน… — `spontaneous-medium-1-7.wav`
+- `spontaneous-medium-1-8` [record] อยากดูละครต้องเปิด… — `spontaneous-medium-1-8.wav`
+- `spontaneous-medium-1-9` [record] อยากรู้เวลาต้องดู… — `spontaneous-medium-1-9.wav`
+- `spontaneous-medium-1-10` [record] เสื้อผ้ายับเราต้องใช้… — `spontaneous-medium-1-10.wav`
+- `spontaneous-medium-2-1` [record] น้ำตาลมีรส… — `spontaneous-medium-2-1.wav`
+- `spontaneous-medium-2-2` [record] กล้วยเป็นผลไม้ที่มีสี… — `spontaneous-medium-2-2.wav`
+- `spontaneous-medium-2-3` [record] นมวัวมีสี… — `spontaneous-medium-2-3.wav`
+- `spontaneous-medium-2-4` [record] พระจันทร์ออกมาตอน… — `spontaneous-medium-2-4.wav`
+- `spontaneous-medium-2-5` [record] น้ำแข็งทำมาจาก… — `spontaneous-medium-2-5.wav`
+- `spontaneous-medium-2-6` [record] ว่าวลอยอยู่บน… — `spontaneous-medium-2-6.wav`
+- `spontaneous-medium-2-7` [record] เรือแล่นอยู่ใน… — `spontaneous-medium-2-7.wav`
+- `spontaneous-medium-2-8` [record] มืดแล้วต้องเปิด… — `spontaneous-medium-2-8.wav`
+- `spontaneous-medium-2-9` [record] อยากรู้วันที่ต้องดู… — `spontaneous-medium-2-9.wav`
+- `spontaneous-medium-2-10` [record] ผมยุ่งเราต้องใช้… — `spontaneous-medium-2-10.wav`
+- `spontaneous-medium-3-1` [record] มะนาวมีรส… — `spontaneous-medium-3-1.wav`
+- `spontaneous-medium-3-2` [record] ส้มเป็นผลไม้ที่มีสี… — `spontaneous-medium-3-2.wav`
+- `spontaneous-medium-3-3` [record] ปลาว่ายอยู่ใน… — `spontaneous-medium-3-3.wav`
+- `spontaneous-medium-3-4` [record] ลูกบอลมีรูปร่าง… — `spontaneous-medium-3-4.wav`
+- `spontaneous-medium-3-5` [record] ฝนตกทำให้พื้น… — `spontaneous-medium-3-5.wav`
+- `spontaneous-medium-3-6` [record] หนังสือใช้สำหรับ… — `spontaneous-medium-3-6.wav`
+- `spontaneous-medium-3-7` [record] เครื่องบินอยู่บน… — `spontaneous-medium-3-7.wav`
+- `spontaneous-medium-3-8` [record] เรานั่งอยู่บน… — `spontaneous-medium-3-8.wav`
+- `spontaneous-medium-3-9` [record] เวลาแต่งตัวต้องส่อง… — `spontaneous-medium-3-9.wav`
+- `spontaneous-medium-3-10` [record] ตามองเห็นไม่ชัดต้องใส่… — `spontaneous-medium-3-10.wav`
+- `spontaneous-hard-1-1` [record] ไก่งามเพราะขน คนงามเพราะ… — `spontaneous-hard-1-1.wav`
+- `spontaneous-hard-1-2` [record] คนรักเท่าผืนหนัง คนชังเท่าผืน… — `spontaneous-hard-1-2.wav`
+- `spontaneous-hard-1-3` [record] คุณทำอะไรเมื่อหิวข้าว — `assessment-06.wav`
+- `spontaneous-hard-1-4` [record] ดวงอาทิตย์ขึ้นทางทิศไหน — `spontaneous-hard-1-4.wav`
+- `spontaneous-hard-1-5` [record] เรามีนิ้วมือทั้งหมดกี่นิ้ว — `spontaneous-hard-1-5.wav`
+- `spontaneous-hard-1-6` [record] คุณใช้อะไรแปรงฟัน — `spontaneous-hard-1-6.wav`
+- `spontaneous-hard-1-7` [record] หนึ่งวันมีกี่ชั่วโมง — `spontaneous-hard-1-7.wav`
+- `spontaneous-hard-1-8` [record] เมื่อไม่สบาย ต้องไปที่ไหน — `spontaneous-hard-1-8.wav`
+- `spontaneous-hard-1-9` [record] ถ้าอยากขึ้นรถไฟต้องไปที่ไหน — `spontaneous-hard-1-9.wav`
+- `spontaneous-hard-1-10` [record] จังหวัดลำปางอยู่ภาคอะไรของประเทศไทย — `spontaneous-hard-1-10.wav`
+- `spontaneous-hard-2-1` [record] ดูช้างให้ดูหาง ดูนางให้ดู… — `spontaneous-hard-2-1.wav`
+- `spontaneous-hard-2-2` [record] น้ำร้อนปลาเป็น น้ำเย็นปลา… — `spontaneous-hard-2-2.wav`
+- `spontaneous-hard-2-3` [record] คุณทำอะไรเมื่อง่วง — `spontaneous-hard-2-3.wav`
+- `spontaneous-hard-2-4` [record] ดวงอาทิตย์ตกทางทิศไหน — `spontaneous-hard-2-4.wav`
+- `spontaneous-hard-2-5` [record] ดวงอาทิตย์ตกตอนไหน — `spontaneous-hard-2-5.wav`
+- `spontaneous-hard-2-6` [record] ไข่หนึ่งโหลมีกี่ฟอง — `spontaneous-hard-2-6.wav`
+- `spontaneous-hard-2-7` [record] หนึ่งชั่วโมงมีกี่นาที — `spontaneous-hard-2-7.wav`
+- `spontaneous-hard-2-8` [record] เด็กนักเรียนเรียนหนังสือที่ไหน — `spontaneous-hard-2-8.wav`
+- `spontaneous-hard-2-9` [record] ถ้าอยากขึ้นเครื่องบินต้องไปที่ไหน — `spontaneous-hard-2-9.wav`
+- `spontaneous-hard-2-10` [record] จังหวัดเชียงใหม่อยู่ภาคอะไรของประเทศไทย — `spontaneous-hard-2-10.wav`
+- `spontaneous-hard-3-1` [record] ตกน้ำไม่ไหล ตกไฟไม่… — `spontaneous-hard-3-1.wav`
+- `spontaneous-hard-3-2` [record] น้ำพึ่งเรือ เสือพึ่ง… — `spontaneous-hard-3-2.wav`
+- `spontaneous-hard-3-3` [record] คุณทำอะไรเมื่อหิวน้ำ — `spontaneous-hard-3-3.wav`
+- `spontaneous-hard-3-4` [record] ฝนตกมากในฤดูอะไร — `spontaneous-hard-3-4.wav`
+- `spontaneous-hard-3-5` [record] ดวงอาทิตย์ขึ้นตอนไหน — `spontaneous-hard-3-5.wav`
+- `spontaneous-hard-3-6` [record] รถยนต์มีกี่ล้อ — `spontaneous-hard-3-6.wav`
+- `spontaneous-hard-3-7` [record] หนึ่งวันมีกี่ชั่วโมง — `spontaneous-hard-1-7.wav`
+- `spontaneous-hard-3-8` [record] ตำรวจทำงานที่ไหน — `spontaneous-hard-3-8.wav`
+- `spontaneous-hard-3-9` [record] ถ้าอยากไหว้พระทำบุญต้องไปที่ไหน — `spontaneous-hard-3-9.wav`
+- `spontaneous-hard-3-10` [record] จังหวัดเชียงรายอยู่ภาคอะไรของประเทศไทย — `spontaneous-hard-3-10.wav`
+
+### feedback
+
+- `feedback-correct` [record] ถูกต้องค่ะ — `feedback-correct.wav`
+- `feedback-wrong` [record] ไม่เป็นไร ไปต่อกันนะคะ — `feedback-wrong.wav`
+- `feedback-received` [record] รับคำตอบแล้วค่ะ — `feedback-received.wav`
+- `feedback-support-comprehension` [record] ไม่เป็นไรนะคะ ไปต่อกันค่ะ — `feedback-support-comprehension.wav`
+
+### milestone
+
+- `milestone-great-5` [record] เก่งมากค่ะ ทำครบ ห้า ข้อแล้วนะคะ — `milestone-great-5.wav`
+- `milestone-well-done-5` [record] ทำได้ดีมากค่ะ ทำครบ ห้า ข้อแล้วนะคะ — `milestone-well-done-5.wav`
+- `milestone-wonderful-5` [record] เยี่ยมเลยค่ะ ทำครบ ห้า ข้อแล้วนะคะ — `milestone-wonderful-5.wav`
+- `milestone-keep-going-5` [record] ค่อย ๆ ทำไปด้วยกันนะคะ ทำครบ ห้า ข้อแล้วนะคะ — `milestone-keep-going-5.wav`
+- `milestone-proud-5` [record] ตั้งใจฝึกได้ดีมากค่ะ ทำครบ ห้า ข้อแล้วนะคะ — `milestone-proud-5.wav`
+- `milestone-almost-5` [record] อีกนิดเดียวจะครบแล้วค่ะ ทำครบ ห้า ข้อแล้วนะคะ — `milestone-almost-5.wav`
+- `milestone-great-10` [record] เก่งมากค่ะ ทำครบ สิบ ข้อแล้วนะคะ — `milestone-great-10.wav`
+- `milestone-well-done-10` [record] ทำได้ดีมากค่ะ ทำครบ สิบ ข้อแล้วนะคะ — `milestone-well-done-10.wav`
+- `milestone-wonderful-10` [record] เยี่ยมเลยค่ะ ทำครบ สิบ ข้อแล้วนะคะ — `milestone-wonderful-10.wav`
+- `milestone-keep-going-10` [record] ค่อย ๆ ทำไปด้วยกันนะคะ ทำครบ สิบ ข้อแล้วนะคะ — `milestone-keep-going-10.wav`
+- `milestone-proud-10` [record] ตั้งใจฝึกได้ดีมากค่ะ ทำครบ สิบ ข้อแล้วนะคะ — `milestone-proud-10.wav`
+- `milestone-almost-10` [record] อีกนิดเดียวจะครบแล้วค่ะ ทำครบ สิบ ข้อแล้วนะคะ — `milestone-almost-10.wav`
+- `milestone-great-15` [record] เก่งมากค่ะ ทำครบ สิบห้า ข้อแล้วนะคะ — `milestone-great-15.wav`
+- `milestone-well-done-15` [record] ทำได้ดีมากค่ะ ทำครบ สิบห้า ข้อแล้วนะคะ — `milestone-well-done-15.wav`
+- `milestone-wonderful-15` [record] เยี่ยมเลยค่ะ ทำครบ สิบห้า ข้อแล้วนะคะ — `milestone-wonderful-15.wav`
+- `milestone-keep-going-15` [record] ค่อย ๆ ทำไปด้วยกันนะคะ ทำครบ สิบห้า ข้อแล้วนะคะ — `milestone-keep-going-15.wav`
+- `milestone-proud-15` [record] ตั้งใจฝึกได้ดีมากค่ะ ทำครบ สิบห้า ข้อแล้วนะคะ — `milestone-proud-15.wav`
+- `milestone-great-20` [record] เก่งมากค่ะ ทำครบ ยี่สิบ ข้อแล้วนะคะ — `milestone-great-20.wav`
+- `milestone-well-done-20` [record] ทำได้ดีมากค่ะ ทำครบ ยี่สิบ ข้อแล้วนะคะ — `milestone-well-done-20.wav`
+- `milestone-wonderful-20` [record] เยี่ยมเลยค่ะ ทำครบ ยี่สิบ ข้อแล้วนะคะ — `milestone-wonderful-20.wav`
+- `milestone-keep-going-20` [record] ค่อย ๆ ทำไปด้วยกันนะคะ ทำครบ ยี่สิบ ข้อแล้วนะคะ — `milestone-keep-going-20.wav`
+- `milestone-proud-20` [record] ตั้งใจฝึกได้ดีมากค่ะ ทำครบ ยี่สิบ ข้อแล้วนะคะ — `milestone-proud-20.wav`
+- `milestone-great-25` [record] เก่งมากค่ะ ทำครบ ยี่สิบห้า ข้อแล้วนะคะ — `milestone-great-25.wav`
+- `milestone-well-done-25` [record] ทำได้ดีมากค่ะ ทำครบ ยี่สิบห้า ข้อแล้วนะคะ — `milestone-well-done-25.wav`
+- `milestone-wonderful-25` [record] เยี่ยมเลยค่ะ ทำครบ ยี่สิบห้า ข้อแล้วนะคะ — `milestone-wonderful-25.wav`
+- `milestone-keep-going-25` [record] ค่อย ๆ ทำไปด้วยกันนะคะ ทำครบ ยี่สิบห้า ข้อแล้วนะคะ — `milestone-keep-going-25.wav`
+- `milestone-proud-25` [record] ตั้งใจฝึกได้ดีมากค่ะ ทำครบ ยี่สิบห้า ข้อแล้วนะคะ — `milestone-proud-25.wav`
+- `milestone-almost-25` [record] อีกนิดเดียวจะครบแล้วค่ะ ทำครบ ยี่สิบห้า ข้อแล้วนะคะ — `milestone-almost-25.wav`
+- `milestone-great-30` [record] เก่งมากค่ะ ทำครบ สามสิบ ข้อแล้วนะคะ — `milestone-great-30.wav`
+- `milestone-well-done-30` [record] ทำได้ดีมากค่ะ ทำครบ สามสิบ ข้อแล้วนะคะ — `milestone-well-done-30.wav`
+- `milestone-wonderful-30` [record] เยี่ยมเลยค่ะ ทำครบ สามสิบ ข้อแล้วนะคะ — `milestone-wonderful-30.wav`
+- `milestone-keep-going-30` [record] ค่อย ๆ ทำไปด้วยกันนะคะ ทำครบ สามสิบ ข้อแล้วนะคะ — `milestone-keep-going-30.wav`
+- `milestone-proud-30` [record] ตั้งใจฝึกได้ดีมากค่ะ ทำครบ สามสิบ ข้อแล้วนะคะ — `milestone-proud-30.wav`
+
+### remaining
+
+- `remaining-01` [record] กลับมาทำข้อ หนึ่ง กันนะคะ — `remaining-01.wav`
+- `remaining-02` [record] กลับมาทำข้อ สอง กันนะคะ — `remaining-02.wav`
+- `remaining-03` [record] กลับมาทำข้อ สาม กันนะคะ — `remaining-03.wav`
+- `remaining-04` [record] กลับมาทำข้อ สี่ กันนะคะ — `remaining-04.wav`
+- `remaining-05` [record] กลับมาทำข้อ ห้า กันนะคะ — `remaining-05.wav`
+- `remaining-06` [record] กลับมาทำข้อ หก กันนะคะ — `remaining-06.wav`
+- `remaining-07` [record] กลับมาทำข้อ เจ็ด กันนะคะ — `remaining-07.wav`
+- `remaining-08` [record] กลับมาทำข้อ แปด กันนะคะ — `remaining-08.wav`
+- `remaining-09` [record] กลับมาทำข้อ เก้า กันนะคะ — `remaining-09.wav`
+- `remaining-10` [record] กลับมาทำข้อ สิบ กันนะคะ — `remaining-10.wav`
+- `remaining-11` [record] กลับมาทำข้อ สิบเอ็ด กันนะคะ — `remaining-11.wav`
+- `remaining-12` [record] กลับมาทำข้อ สิบสอง กันนะคะ — `remaining-12.wav`
+- `remaining-13` [record] กลับมาทำข้อ สิบสาม กันนะคะ — `remaining-13.wav`
+- `remaining-14` [record] กลับมาทำข้อ สิบสี่ กันนะคะ — `remaining-14.wav`
+- `remaining-15` [record] กลับมาทำข้อ สิบห้า กันนะคะ — `remaining-15.wav`
+- `remaining-16` [record] กลับมาทำข้อ สิบหก กันนะคะ — `remaining-16.wav`
+- `remaining-17` [record] กลับมาทำข้อ สิบเจ็ด กันนะคะ — `remaining-17.wav`
+- `remaining-18` [record] กลับมาทำข้อ สิบแปด กันนะคะ — `remaining-18.wav`
+- `remaining-19` [record] กลับมาทำข้อ สิบเก้า กันนะคะ — `remaining-19.wav`
+- `remaining-20` [record] กลับมาทำข้อ ยี่สิบ กันนะคะ — `remaining-20.wav`
+- `remaining-21` [record] กลับมาทำข้อ ยี่สิบเอ็ด กันนะคะ — `remaining-21.wav`
+- `remaining-22` [record] กลับมาทำข้อ ยี่สิบสอง กันนะคะ — `remaining-22.wav`
+- `remaining-23` [record] กลับมาทำข้อ ยี่สิบสาม กันนะคะ — `remaining-23.wav`
+- `remaining-24` [record] กลับมาทำข้อ ยี่สิบสี่ กันนะคะ — `remaining-24.wav`
+- `remaining-25` [record] กลับมาทำข้อ ยี่สิบห้า กันนะคะ — `remaining-25.wav`
+- `remaining-26` [record] กลับมาทำข้อ ยี่สิบหก กันนะคะ — `remaining-26.wav`
+- `remaining-27` [record] กลับมาทำข้อ ยี่สิบเจ็ด กันนะคะ — `remaining-27.wav`
+- `remaining-28` [record] กลับมาทำข้อ ยี่สิบแปด กันนะคะ — `remaining-28.wav`
+- `remaining-29` [record] กลับมาทำข้อ ยี่สิบเก้า กันนะคะ — `remaining-29.wav`
+- `remaining-30` [record] กลับมาทำข้อ สามสิบ กันนะคะ — `remaining-30.wav`
+
+## สิ่งที่ยังต้องตกลง
+
+- คำใบ้ Naming: ต้องทวนข้อความใบ้ความหมาย และเปลี่ยนใบ้ตัวอักษรเป็นสคริปต์เสียงต้นที่ตรวจแล้วก่อน
+- คำใบ้/เสียงช้าหรือแบ่งประโยคของอีกสามพาร์ต: ยังไม่มีข้อสรุป จึงไม่สร้างสคริปต์เพิ่มในรายการอัดทันที
+- ส่วน Comprehension ชื่อ/เพศ/อาชีพ/จังหวัด: ข้อความ เฉลย และเสียงต้องเป็นของคนไข้คนเดียวกัน ไม่ใช้ตัวอย่างสมหญิง/สมชายหรือจังหวัดเดิมแทนข้อมูลจริง
+- ไฟล์เสียงคำตอบ Naming ที่มีอยู่เป็นเพียงไฟล์ให้ตรวจ ยังไม่ได้อนุมัติเปิดใช้ทั้งหมด
+- หลังได้รับไฟล์ ต้องตรวจเนื้อหา/ชื่อไฟล์และจับคู่ก่อนเปิดใช้ ไม่ใช่อัดแล้วโปรแกรมเชื่อมให้อัตโนมัติ

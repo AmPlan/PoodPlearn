@@ -98,7 +98,7 @@ export async function PATCH(
                 ...(questions && Array.isArray(questions) && {
                     setQuestions: {
                         deleteMany: {}, // Wipes the existing questions for this set
-                        create: questions.map((q: any) => ({
+                        create: questions.map((q: { questionId?: unknown; orderIndex?: unknown }) => ({
                             questionId: Number(q.questionId),
                             orderIndex: Number(q.orderIndex),
                         })),

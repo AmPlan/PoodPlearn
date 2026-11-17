@@ -4,6 +4,9 @@ export type UserRole = 'PATIENT' | 'THERAPIST';
 
 export const AUTH_COOKIE_NAME = 'nsc_session';
 const AUTH_SECRET = process.env.AUTH_SECRET ?? 'dev-auth-secret-change-me';
+if (process.env.NODE_ENV === 'production' && !process.env.AUTH_SECRET?.trim()) {
+  throw new Error('AUTH_SECRET must be configured in production.');
+}
 
 export type SessionData = {
   userId: number;

@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse, after } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 import { AUTH_COOKIE_NAME, verifySession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { submitAnswer, submitAnswerWithComparison } from '@/lib/grader';
+import { submitAnswer } from '@/lib/grader';
 
 interface SessionInput {
   questionId: number;
@@ -204,14 +204,14 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Failed to record session item:', error);
 
     // Catch specific logic errors thrown inside the transaction
-    if (
+    if (error instanceof Error && (
       error.message === 'Question 0 not found.' ||
       error.message === 'Active session category not found for this session.'
-    ) {
+    )) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 

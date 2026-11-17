@@ -223,9 +223,8 @@ export async function getPatientClinicalOverview(patientId: string): Promise<{
   const numericPatientId = Number(patientId);
   const query = new URLSearchParams();
 
-  if (Number.isInteger(numericPatientId) && numericPatientId > 0) {
-    query.set("patientId", String(numericPatientId));
-  }
+  if (!Number.isSafeInteger(numericPatientId) || numericPatientId <= 0) return { success: false, errorMessage: "กรุณาตรวจสอบรหัสผู้รับบริการ" };
+  query.set("patientId", String(numericPatientId));
 
   query.set("limit", "20");
 
@@ -233,7 +232,8 @@ export async function getPatientClinicalOverview(patientId: string): Promise<{
     `${getBaseUrl()}/api/v1/sessions?${query.toString()}`,
   );
 
-  const sessions = Array.isArray(payload?.data) ? payload.data : [];
+  if (!payload || payload.error || !Array.isArray(payload.data)) return { success: false, errorMessage: "กรุณาลองโหลดผลการฝึกอีกครั้ง" };
+  const sessions = payload.data;
 
   return {
     success: true,
@@ -252,7 +252,7 @@ export async function getPatientSessionResults(patientId: string): Promise<{
     getSavedNamingResponsesForPatient(patientId).map(({ response, question }) => ({
       id: response.responseId,
       date: response.submittedAt.slice(0, 10),
-      asrTranscript: response.mockAnswer ?? (response.skipped ? "ข้ามข้อนี้" : ""),
+      asrTranscript: response.skipped ? "ข้ามข้อนี้" : "",
       expectedAnswer: question?.answer,
       aiCorrect: response.isCorrect,
       therapistReviewStatus: response.skipped ? "needs-review" : "not-reviewed",
@@ -264,9 +264,8 @@ export async function getPatientSessionResults(patientId: string): Promise<{
   const numericPatientId = Number(patientId);
   const query = new URLSearchParams();
 
-  if (Number.isInteger(numericPatientId) && numericPatientId > 0) {
-    query.set("patientId", String(numericPatientId));
-  }
+  if (!Number.isSafeInteger(numericPatientId) || numericPatientId <= 0) return { success: false, errorMessage: "กรุณาตรวจสอบรหัสผู้รับบริการ" };
+  query.set("patientId", String(numericPatientId));
 
   query.set("limit", "50");
 
@@ -274,7 +273,8 @@ export async function getPatientSessionResults(patientId: string): Promise<{
     `${getBaseUrl()}/api/v1/sessions?${query.toString()}`,
   );
 
-  const apiSessionResults: SessionResultItem[] = (Array.isArray(payload?.data) ? payload.data : []).map((session) => ({
+  if (!payload || payload.error || !Array.isArray(payload.data)) return { success: false, errorMessage: "กรุณาลองโหลดประวัติการฝึกอีกครั้ง" };
+  const apiSessionResults: SessionResultItem[] = payload.data.map((session) => ({
     id: `session-${session.sessionId ?? "unknown"}`,
     date: formatDate(session.sessionCategoryResult?.endedAt ?? session.sessionCategoryResult?.startedAt),
     expectedAnswer: session.sessionCategoryResult?.trainingSet?.title ?? undefined,

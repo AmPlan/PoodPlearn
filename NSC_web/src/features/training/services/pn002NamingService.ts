@@ -235,10 +235,12 @@ export async function getNamingSetById(setId: string): Promise<TrainingServiceRe
 }
 
 export async function getNamingQuestionById(questionId: string): Promise<TrainingServiceResult<NamingQuestion>> {
+  void questionId;
   return createFailure("ไม่รองรับการโหลดคำถามเดี่ยวในตอนนี้");
 }
 
 export function getSavedNamingResponsesForPatient(_patientId: string) {
+  void _patientId;
   return [] as Array<{
     response: {
       responseId: string;

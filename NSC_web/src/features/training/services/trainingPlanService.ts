@@ -70,7 +70,6 @@ export async function getTodayTrainingPlan(
 
 		const planEntries = payload.existingSchedules ?? payload.generatedSchedules;
 
-		console.log(planEntries);
 
 		if (!planEntries) {
 			return createFailure("ไม่พบแผนในวันนี้");

@@ -1,0 +1,5 @@
+﻿"slot_id","spoken_text","status","record_filename","notes"
+"feedback-correct","ถูกต้องค่ะ","record","feedback-correct.wav",""
+"feedback-wrong","ไม่เป็นไร ไปต่อกันนะคะ","record","feedback-wrong.wav",""
+"feedback-received","รับคำตอบแล้วค่ะ","record","feedback-received.wav",""
+"feedback-support-comprehension","ไม่เป็นไรนะคะ ไปต่อกันค่ะ","record","feedback-support-comprehension.wav","ข้อความ Comprehension; ต้องแยก mapping หรือปรับข้อความให้ตรงกับ wrong เดิมก่อนเปิดใช้"

@@ -17,11 +17,11 @@ export default async function TherapistPatientDetailPage({ params }: PageProps) 
   ]);
 
   if (!result.success) {
-    return <TherapistPatientDetailFallback patientId={patientId} />;
+    return <TherapistPatientDetailFallback key={patientId} patientId={patientId} />;
   }
 
   if (!clinicalResult.success) {
-    return <TherapistPatientDetailFallback patientId={patientId} />;
+    return <TherapistPatientDetailFallback key={patientId} patientId={patientId} />;
   }
 
   return (

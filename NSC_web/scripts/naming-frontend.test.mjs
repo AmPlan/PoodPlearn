@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
+import * as crypto from "node:crypto";
 import ts from "typescript";
 import { fileURLToPath } from "node:url";
 import * as jsxRuntime from "react/jsx-runtime";
@@ -1729,6 +1730,255 @@ test("Spontaneous UI renders prompts without bracketed answers and accepts voice
 	recorded.render(question);
 	assert.equal(recorded.sent.length, 1);
 	assert.equal(recorded.sent[0][0], blob);
+});
+
+test("Clinical CSV exports require a therapist before database access and retain literal CSV cells", async () => {
+	class ResponseMock {
+		constructor(body, options = {}) {
+			this.body = body;
+			this.status = options.status ?? 200;
+			this.headers = options.headers ?? {};
+		}
+		static json(body, options) {
+			return new ResponseMock(body, options);
+		}
+	}
+	let session = null;
+	const guard = load("src/lib/api-auth.ts", {
+		"next/headers": {
+			cookies: async () => ({ get: () => ({ value: "fixture-cookie" }) }),
+		},
+		"next/server": { NextResponse: ResponseMock },
+		"./auth": { AUTH_COOKIE_NAME: "nsc_session", verifySession: () => session },
+	});
+	const csv = load("src/lib/csv.ts");
+	assert.equal(csv.csvEscape('a,"b"\nc'), '"a,""b""\nc"');
+	assert.equal(csv.csvEscape(" =1+1"), "' =1+1");
+	assert.equal(csv.csvEscape("@SUM(1)"), "'@SUM(1)");
+	assert.equal(csv.csvEscape(-1), "-1");
+	assert.equal(csv.csvEscape(false), "false");
+	assert.equal(csv.csvEscape(null), "");
+	const createdAt = new Date("2026-11-17T00:00:00Z");
+	const question = {
+		questionId: 100,
+		questionType: "REPETITION",
+		repetitionQuestions: [{ text: 'คำ, "ทดสอบ"' }],
+		difficultyLevel: { difficultyName: "ง่าย" },
+	};
+	const item = {
+		question,
+		createdAt,
+		asrText: "ทดสอบ",
+		isCorrect: false,
+		correctness: 0,
+		responseTime: 0,
+		score: 0,
+		hintsUsed: 0,
+	};
+	const patient = { patientFirstName: "=1+1", patientLastName: "ทดสอบ" };
+	for (const kind of ["assessments", "sessions"]) {
+		let reads = 0;
+		const record =
+			kind === "assessments"
+				? {
+						assessmentResultId: 1,
+						patientId: 7,
+						setId: 9,
+						patient,
+						startedAt: createdAt,
+						endedAt: createdAt,
+						assessmentItemResults: [{ ...item, assessmentItemResultId: 55 }],
+					}
+				: {
+						sessionId: 1,
+						patientId: 7,
+						patient,
+						sessionCategoryResult: {
+							setId: 9,
+							sessionCategoryId: 2,
+							totalScore: 0,
+							averageResponseTime: 0,
+							averageHintUsed: 0,
+							startedAt: createdAt,
+							endedAt: createdAt,
+							sessionItemResults: [{ ...item, sessionItemId: 55 }],
+						},
+					};
+		const model = {
+			findUnique: async () => {
+				reads++;
+				return record;
+			},
+		};
+		const route = load(`src/app/api/v1/${kind}/[id]/export/route.ts`, {
+			"next/server": { NextResponse: ResponseMock },
+			"@/lib/prisma": {
+				prisma: { assessmentResult: model, sessionResult: model },
+			},
+			"@/lib/api-auth": guard,
+			"@/lib/csv": csv,
+		});
+		session = null;
+		assert.equal(
+			(await route.GET({}, { params: Promise.resolve({ id: "1" }) })).status,
+			401,
+		);
+		session = { role: "PATIENT", patientId: 7 };
+		assert.equal(
+			(await route.GET({}, { params: Promise.resolve({ id: "1" }) })).status,
+			403,
+		);
+		assert.equal(reads, 0);
+		session = { role: "THERAPIST" };
+		assert.equal(
+			(await route.GET({}, { params: Promise.resolve({ id: "invalid" }) }))
+				.status,
+			400,
+		);
+		assert.equal(reads, 0);
+		const response = await route.GET(
+			{},
+			{ params: Promise.resolve({ id: "1" }) },
+		);
+		assert.equal(response.status, 200);
+		assert.equal(reads, 1);
+		assert(response.body.startsWith("\uFEFF"));
+		assert(response.body.includes("'=1+1 ทดสอบ"));
+		assert(response.body.includes('"คำ, ""ทดสอบ"""'));
+		assert.equal(response.headers["Content-Type"], "text/csv; charset=utf-8");
+	}
+});
+test("Therapist clinical requests reject invalid patient IDs and distinguish failed loads from empty history", async () => {
+	let calls = 0;
+	let mode = "failure";
+	const api = load(
+		"src/features/therapist/services/therapistClinicalService.ts",
+		{
+			"@/features/training/services/pn002NamingService": {
+				getSavedNamingResponsesForPatient: () => [],
+			},
+			"@/lib/baseUrl": { getBaseUrl: () => "http://fixture.local" },
+		},
+		{
+			window: {},
+			URLSearchParams,
+			fetch: async (url) => {
+				calls++;
+				assert(url.includes("patientId=7"));
+				return {
+					ok: mode !== "failure",
+					json: async () =>
+						mode === "malformed" ? { data: {} } : { data: [] },
+				};
+			},
+		},
+	);
+	for (const fn of [
+		api.getPatientClinicalOverview,
+		api.getPatientSessionResults,
+	]) {
+		assert.equal((await fn("invalid")).success, false);
+		assert.equal((await fn("0")).success, false);
+	}
+	assert.equal(calls, 0);
+	for (const fn of [
+		api.getPatientClinicalOverview,
+		api.getPatientSessionResults,
+	]) {
+		mode = "failure";
+		assert.equal((await fn("7")).success, false);
+		mode = "malformed";
+		assert.equal((await fn("7")).success, false);
+		mode = "empty";
+		assert.equal((await fn("7")).success, true);
+	}
+});
+test("Therapist review keeps unknown grades ungraded and cannot overwrite backend grades with local notes", async () => {
+	const h = hooks();
+	const fixtures = [
+		{ id: "session-1", date: "2026-11-17", aiCorrect: undefined },
+		{ id: "session-2", date: "2026-11-17", aiCorrect: false },
+	];
+	const ui = load(
+		"src/features/therapist/components/SessionReviewList.tsx",
+		{
+			"react/jsx-runtime": jsxRuntime,
+			react: { ...h.react, default: h.react },
+			"../services/therapistClinicalService": {
+				getPatientSessionResults: async () => ({
+					success: true,
+					data: fixtures,
+				}),
+			},
+		},
+		{
+			window: {
+				localStorage: {
+					getItem: () =>
+						JSON.stringify({
+							"session-1": {
+								aiCorrect: true,
+								asrTranscript: "fake",
+								therapistNote: "note",
+							},
+						}),
+					setItem() {
+						throw new Error("quota");
+					},
+				},
+			},
+		},
+	);
+	const render = () => {
+		h.reset();
+		return ui.SessionReviewList({ patientId: "7", initialItems: fixtures });
+	};
+	render();
+	await new Promise((resolve) => setImmediate(resolve));
+	let tree = render();
+	assert(textOf(tree).includes("รอผลตรวจจากระบบ"));
+	assert(textOf(tree).includes("ไม่ถูกต้อง"));
+	assert(!textOf(tree).includes("fake"));
+	assert(textOf(tree).includes("ยังไม่ส่งเข้า Backend"));
+	const note = flatten(tree).find((n) => n.type === "textarea");
+	assert.equal(note.props.value, "note");
+	note.props.onChange({ target: { value: "edited note" } });
+	tree = render();
+	assert(flatten(tree).some((n) => n.props?.role === "alert"));
+	assert(textOf(tree).includes("กรุณาสำรองข้อความไว้ก่อน"));
+});
+
+test("Production authentication cannot use the development signing-secret fallback", () => {
+	assert.throws(
+		() =>
+			load(
+				"src/lib/auth.ts",
+				{ "node:crypto": crypto },
+				{ Buffer, process: { env: { NODE_ENV: "production" } } },
+			),
+		/AUTH_SECRET/,
+	);
+	const auth = load(
+		"src/lib/auth.ts",
+		{ "node:crypto": crypto },
+		{
+			Buffer,
+			process: {
+				env: {
+					NODE_ENV: "production",
+					AUTH_SECRET: "fixture-secret-for-regression-only",
+				},
+			},
+		},
+	);
+	const value = auth.signSession({
+		userId: 1,
+		account: "fixture",
+		role: "PATIENT",
+		patientId: 7,
+	});
+	assert.equal(auth.verifySession(value).patientId, 7);
+	assert.equal(auth.verifySession(value + "tampered"), null);
 });
 
 test("feedback audio continues once on end and cannot advance after cancellation", async () => {

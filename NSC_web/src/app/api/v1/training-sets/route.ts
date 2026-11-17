@@ -67,7 +67,7 @@ export async function POST(request: Request) {
                 // If questions are provided, map through them and create the relationships
                 ...(questions && Array.isArray(questions) && questions.length > 0 && {
                     setQuestions: {
-                        create: questions.map((q: any) => ({
+                        create: questions.map((q: { questionId?: unknown; orderIndex?: unknown }) => ({
                             questionId: Number(q.questionId),
                             orderIndex: Number(q.orderIndex),
                         })),

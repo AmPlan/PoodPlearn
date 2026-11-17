@@ -70,7 +70,6 @@ export async function GET(req: NextRequest) {
             },
         });
 
-        lastAssessment?.endedAt
 
         if (!lastAssessment) {
             return NextResponse.json(

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { title } from 'process';
 import { authorizePatientAccess, parsePatientId } from '@/lib/daily-plan/api-auth';
 import { parseLocalDate, startOfDay } from '@/lib/daily-plan/date-utils';
 import { buildEnrichedSchedule } from '@/lib/daily-plan/serialize';

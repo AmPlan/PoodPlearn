@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { QuestionWithVariants } from "@/lib/daily-plan/question-detail";
+import { requireTherapistSession } from "@/lib/api-auth";
+import { toCsvRow } from "@/lib/csv";
 import { prisma } from "@/lib/prisma"; // adjust import path to match your project (this uses the prisma.ts you uploaded)
 
 // ---------- Types ----------
@@ -15,7 +18,7 @@ type QuestionContext = {
  * in a different table. This pulls out a normalized {questionText, correctAnswer}
  * regardless of which type the question is.
  */
-function extractQuestionContext(question: any): QuestionContext {
+function extractQuestionContext(question: QuestionWithVariants): QuestionContext {
     switch (question.questionType) {
         case "NAMING": {
             const q = question.namingQuestions?.[0];
@@ -60,26 +63,14 @@ function extractQuestionContext(question: any): QuestionContext {
     }
 }
 
-/** Escapes a single CSV field per RFC 4180 */
-function csvEscape(value: unknown): string {
-    if (value === null || value === undefined) return "";
-    const str = String(value);
-    if (/[",\n\r]/.test(str)) {
-        return `"${str.replace(/"/g, '""')}"`;
-    }
-    return str;
-}
-
-function toCsvRow(values: unknown[]): string {
-    return values.map(csvEscape).join(",");
-}
-
 // ---------- Route ----------
 
 export async function GET(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    const access = await requireTherapistSession();
+    if (!access.ok) return access.response;
     const { id } = await params;
     const sessionId = Number(id);
 

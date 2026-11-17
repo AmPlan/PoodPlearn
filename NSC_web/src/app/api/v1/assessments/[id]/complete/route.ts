@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 import { AUTH_COOKIE_NAME, verifySession } from '@/lib/auth';
-import { resolveAssessmentCategories, getRecommendedAssessmentExercise, getAssessmentCategoryKey, getAssessmentCategoryId } from '@/lib/assessmentCategories';
+import { resolveAssessmentCategories, getRecommendedAssessmentExercise, getAssessmentCategoryId } from '@/lib/assessmentCategories';
 import { prisma } from '@/lib/prisma';
 
 type CompleteAssessmentContext = {

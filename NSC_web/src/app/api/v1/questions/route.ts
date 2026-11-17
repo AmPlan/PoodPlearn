@@ -206,7 +206,7 @@ function buildQuestionUpdateData(questionType: QuestionTypeValue, body: CreateQu
     }
 
     case 'COMPREHENSION': {
-      const data: Record<string, any> = {};
+      const data: Record<string, string | boolean> = {};
 
       if (body.correctAnswer !== undefined) {
         const value = requireBoolean(body.correctAnswer, 'correctAnswer');
@@ -667,10 +667,10 @@ export async function PATCH(req: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Failed to update question:', error);
     // Custom handling if our difficulty validation throws above
-    if (error.message === 'difficultyId must be a number or null.') {
+    if (error instanceof Error && error.message === 'difficultyId must be a number or null.') {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
     return NextResponse.json({ error: 'Unable to update question.' }, { status: 500 });

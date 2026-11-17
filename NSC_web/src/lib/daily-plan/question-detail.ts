@@ -1,11 +1,14 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
-type QuestionWithVariants = {
-  namingQuestions: any[];
-  comprehensionImageQuestions: any[];
-  ComprehensionQuestion: any[];
-  repetitionQuestions: any[];
-  spontaneousQuestions: any[];
-};
+import type { Prisma } from '@/lib/prisma';
+
+export type QuestionWithVariants = Prisma.QuestionGetPayload<{
+  include: {
+    namingQuestions: true;
+    comprehensionImageQuestions: true;
+    ComprehensionQuestion: true;
+    repetitionQuestions: true;
+    spontaneousQuestions: true;
+  };
+}>;
 
 /**
  * Each question row has exactly one populated "variant" relation depending on
