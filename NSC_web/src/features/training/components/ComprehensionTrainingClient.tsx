@@ -533,7 +533,6 @@ export function ComprehensionQuestionView({
 		);
 	return (
 		<AssessmentQuestion
-			usePracticeHints
 			practiceAnswer={
 				question.interactionType === "image_choice"
 					? question.target

@@ -31,6 +31,7 @@ export type AssessmentHint = {
   | "normal_repetition"
   | "answer";
   text: string;
+  audioSrc?: string;
 };
 
 export type StandardAssessmentQuestion = {
@@ -44,6 +45,7 @@ export type StandardAssessmentQuestion = {
   imageSrc?: string;
   imageUrl?: string;
   questionAudioSrc?: string;
+  answerAudioSrc?: string;
   choices?: QuestionChoice[];
   hints?: AssessmentHint[];
   hintText?: string;

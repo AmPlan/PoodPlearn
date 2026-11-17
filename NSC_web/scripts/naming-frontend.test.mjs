@@ -14,6 +14,7 @@ test("Practice cues follow the agreed replay/reveal order and never reveal befor
 		["spontaneous", 2, [1]],
 		["comprehension", 3, [1, 1]],
 		["repetition", 3, [0.75, 0.5, 1]],
+		["naming", 3, [1]],
 	]) {
 		const h = hooks();
 		const played = [];
@@ -31,6 +32,10 @@ test("Practice cues follow the agreed replay/reveal order and never reveal befor
 			category,
 			source: "/approved.wav",
 			answer: "เฉลยทดสอบ",
+			answerContent: false,
+			feature: "ลักษณะของสิ่งของ",
+			initialSyllable: "พยางค์แรก",
+			answerSource: "/approved-answer.wav",
 			disabled: false,
 			play: async (source, ended, rate) => played.push(rate),
 			onCount: (n) => counts.push(n),
@@ -75,6 +80,44 @@ function load(relative, imports = {}, globals = {}) {
 	});
 	return result.exports;
 }
+test("Personal/contextual cue answers stay pending until supplied; reveal never submits an answer", async () => {
+	for (const category of ["spontaneous", "comprehension"]) {
+		const h = hooks();
+		const counts = [];
+		const { PracticeHints } = load(
+			"src/features/training/components/PracticeHints.tsx",
+			{
+				react: h.react,
+				"react/jsx-runtime": jsxRuntime,
+				"lucide-react": icons,
+				"./practiceStyles": {},
+			},
+		);
+		const props = {
+			category,
+			source: "/approved.wav",
+			disabled: false,
+			play: async () => {},
+			onCount: (n) => counts.push(n),
+		};
+		const render = () => {
+			h.reset();
+			return PracticeHints(props);
+		};
+		const repeats = category === "spontaneous" ? 1 : 2;
+		for (let i = 0; i < repeats; i++)
+			await flatten(render())
+				.find((node) => node.type === "button")
+				.props.onClick();
+		const view = render();
+		assert(flatten(view).find((node) => node.type === "button").props.disabled);
+		assert(textOf(view).includes("รอเฉลยจากระบบ"));
+		await flatten(view)
+			.find((node) => node.type === "button")
+			.props.onClick();
+		assert.equal(counts.length, repeats);
+	}
+});
 const catalog = load("src/features/training/data/namingCatalog.ts");
 const expected = [
 	"หมา,นก,วัว,ลา,ควาย,จระเข้,แรด,ปลาหมึก,เต่า,งู,ค้างคาว,ผึ้ง,ยุง,แมลงวัน,แมงมุม",
@@ -511,7 +554,14 @@ test("standard assessment matches all 30 supplied items and category boundaries"
 		{
 			"@/features/training/data/namingCatalog": catalog,
 			"@/features/training/data/patientAudioManifest": {
-				patientAudioManifest: { assessmentQuestions: {} },
+				patientAudioManifest: {
+					assessmentQuestions: {},
+					assessmentAnswers: {},
+					assessmentHints: {},
+					namingAnswers: {},
+					namingHints: {},
+					namingInitialSyllables: {},
+				},
 			},
 		},
 	);
@@ -586,7 +636,10 @@ test("standard assessment matches all 30 supplied items and category boundaries"
 		);
 	}
 	for (const q of questions.slice(10, 16)) {
-		assert.equal(q.expectedAnswer, undefined);
+		assert.equal(
+			q.expectedAnswer,
+			[13, 14, 15].includes(q.order) ? "ไม่ใช่" : undefined,
+		);
 		assert(q.choices.every((choice) => choice.isCorrect === undefined));
 	}
 	for (const q of questions) {
@@ -595,8 +648,8 @@ test("standard assessment matches all 30 supplied items and category boundaries"
 		if (q.questionAudioSrc)
 			assert(fs.existsSync(path.join(root, "public", q.questionAudioSrc)));
 		assert(
-			!q.hints?.length,
-			"Do not inherit Naming training hints into the assessment",
+			q.category === "naming" ? q.hints?.length === 2 : !q.hints?.length,
+			"Assessment Naming uses the approved category cue sequence",
 		);
 	}
 });
@@ -941,7 +994,7 @@ test("question dots expose numbered statuses and navigation without a progress b
 });
 
 test("Repetition shows its actual sentence; recording submits a blob once without typing", () => {
-	function setup(blob) {
+	function setup(blob, override = {}) {
 		const h = hooks();
 		const sent = [];
 		const api = load(
@@ -981,9 +1034,11 @@ test("Repetition shows its actual sentence; recording submits a blob once withou
 		const props = {
 			question: {
 				id: "q20",
+				category: "repetition",
 				order: 20,
 				interactionType: "repeat_after",
 				promptText: "รถติดบนถนน",
+				...override,
 			},
 			locked: false,
 			answered: false,
@@ -1000,6 +1055,17 @@ test("Repetition shows its actual sentence; recording submits a blob once withou
 		};
 	}
 	const missing = setup();
+	for (const category of [
+		"spontaneous",
+		"comprehension",
+		"repetition",
+		"naming",
+	]) {
+		const round = setup(undefined, { category });
+		const cue = flatten(round.render()).find((node) => node.props?.onCount);
+		assert.equal(cue.props.category, category);
+		assert.equal(round.sent.length, 0);
+	}
 	const tree = missing.render();
 	assert(textOf(tree).includes("รถติดบนถนน"));
 	assert(textOf(tree).includes("ยังไม่มีเสียงโจทย์"));
@@ -1023,6 +1089,7 @@ test("Repetition shows its actual sentence; recording submits a blob once withou
 		const choiceRound = setup();
 		choiceRound.props.question = {
 			id: "choice-question",
+			category: "comprehension",
 			order: 8,
 			interactionType,
 			promptText:
@@ -1041,6 +1108,9 @@ test("Repetition shows its actual sentence; recording submits a blob once withou
 							{ id: "no", label: "ไม่ใช่" },
 						],
 		};
+		flatten(choiceRound.render())
+			.find((node) => node.props?.onCount)
+			.props.onCount(3);
 		const nodes = flatten(choiceRound.render());
 		assert(
 			!nodes.some(
@@ -1069,6 +1139,7 @@ test("Repetition shows its actual sentence; recording submits a blob once withou
 		assert.equal(choiceRound.sent[0].answerType, interactionType);
 		assert(choiceRound.sent[0].selectedOptionId);
 		assert.equal(choiceRound.sent[0].voiceFile, undefined);
+		assert.equal(choiceRound.sent[0].hintCountUsed, 3);
 	}
 	const spontaneous = setup(voice);
 	spontaneous.props.question = {

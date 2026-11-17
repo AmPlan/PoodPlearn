@@ -17,7 +17,6 @@ import {
 	ArrowLeft,
 	ArrowRight,
 	Check,
-	Lightbulb,
 	LoaderCircle,
 	Mic,
 	SkipForward,
@@ -30,7 +29,10 @@ import { QuestionDots } from "@/features/training/components/QuestionDots";
 import { PracticeFeedback } from "@/features/training/components/PracticeFeedback";
 import { TrainingImageFrame } from "@/features/training/components/TrainingImageFrame";
 import { namingSecondary } from "@/features/training/components/NamingLibrary";
-import { approvedPatientAudio } from "@/features/training/data/patientAudioManifest";
+import {
+	approvedPatientAudio,
+	patientAudioManifest,
+} from "@/features/training/data/patientAudioManifest";
 import {
 	getStandardAssessmentSession,
 	saveStandardAssessmentAnswer,
@@ -259,7 +261,6 @@ export function AssessmentRound({
 
 export function AssessmentQuestion({
 	practiceAnswer,
-	usePracticeHints = false,
 	question,
 	locked,
 	answered,
@@ -268,7 +269,6 @@ export function AssessmentQuestion({
 }: {
 	question: StandardAssessmentQuestion;
 	practiceAnswer?: string;
-	usePracticeHints?: boolean;
 	locked: boolean;
 	answered: boolean;
 	busy: boolean;
@@ -304,9 +304,9 @@ export function AssessmentQuestion({
 		media.micState === "recording" || media.micState === "requesting";
 	const missingRepeatAudio =
 		question.interactionType === "repeat_after" && !source;
-	const availableHints = (question.hints ?? []).filter(
-		(hint) => hint.type !== "answer",
-	);
+	const feature = question.hints?.find((hint) => hint.type === "feature");
+	const initial = question.hints?.find((hint) => hint.type === "initial_sound");
+	const correctChoice = choices.find((choice) => choice.isCorrect === true);
 	const meta = useCallback(
 		() => ({
 			questionId: question.id,
@@ -503,37 +503,46 @@ export function AssessmentQuestion({
 						<Volume2 aria-hidden="true" className="h-5 w-5" />
 						ฟังโจทย์
 					</button>
-					{!usePracticeHints && availableHints.length > 0 && (
-						<button
-							type="button"
-							disabled={locked || recording || hints >= availableHints.length}
-							onClick={() => setHints((count) => count + 1)}
-							className={practiceAction}
-						>
-							<Lightbulb aria-hidden="true" className="h-5 w-5" />
-							คำใบ้
-						</button>
-					)}
 				</div>
-				{usePracticeHints && !answered && (
+				{!answered && (
 					<PracticeHints
-						category="comprehension"
+						category={question.category}
 						source={source}
-						answer={practiceAnswer}
+						answer={practiceAnswer ?? question.expectedAnswer}
+						answerContent={
+							question.interactionType === "image_choice" &&
+							correctChoice && (
+								<div className="w-60 max-w-full">
+									<TrainingImageFrame
+										size="choice"
+										alt="ภาพเฉลย"
+										imageSrc={correctChoice.imageSrc ?? correctChoice.imageUrl}
+									/>
+								</div>
+							)
+						}
+						feature={feature?.text}
+						initialSyllable={initial?.text}
+						hintSources={[
+							approvedPatientAudio(
+								feature?.audioSrc ??
+									patientAudioManifest?.assessmentHints?.[`${question.id}-1`],
+							),
+							approvedPatientAudio(
+								initial?.audioSrc ??
+									patientAudioManifest?.assessmentHints?.[`${question.id}-2`],
+							),
+						]}
+						answerSource={approvedPatientAudio(
+							question.answerAudioSrc ??
+								patientAudioManifest?.assessmentAnswers?.[question.id],
+						)}
 						disabled={locked || recording}
 						play={media.play}
 						onCount={setHints}
 					/>
 				)}
 				{!source && <p className="text-base text-[#829990]">ยังไม่มีเสียงโจทย์</p>}
-				{!usePracticeHints && hints > 0 && (
-					<p
-						role="status"
-						className="max-w-sm text-center text-xl leading-8 text-[#526f65]"
-					>
-						{availableHints[hints - 1]?.text}
-					</p>
-				)}
 				{error && (
 					<p role="alert" className="text-lg text-amber-900">
 						{error}

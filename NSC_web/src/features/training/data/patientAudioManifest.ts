@@ -6,6 +6,8 @@ export const patientAudioManifest = {
 	namingInitialSyllables: {} as Record<string, string>,
 	namingAnswers: {} as Record<string, string>,
 	assessmentQuestions: {} as Record<string, string>,
+	assessmentHints: {} as Record<string, string>,
+	assessmentAnswers: {} as Record<string, string>,
 	// Gemini prompt recordings for the separate 90-item Repetition catalog.
 	repetitionQuestions: {} as Record<string, string>,
 	comprehensionQuestions: {} as Record<string, string>,
@@ -24,6 +26,8 @@ export function approvedPatientAudio(source?: string) {
 		...Object.values(patientAudioManifest.namingHints),
 		...Object.values(patientAudioManifest.namingAnswers),
 		...Object.values(patientAudioManifest.assessmentQuestions),
+		...Object.values(patientAudioManifest.assessmentHints),
+		...Object.values(patientAudioManifest.assessmentAnswers),
 		...Object.values(patientAudioManifest.repetitionQuestions),
 		...Object.values(patientAudioManifest.comprehensionQuestions),
 		...Object.values(patientAudioManifest.spontaneousQuestions),

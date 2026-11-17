@@ -68,6 +68,8 @@ export const standardAssessmentQuestions: StandardAssessmentQuestion[] =
 			order,
 			questionAudioSrc:
 				patientAudioManifest.assessmentQuestions[`standard-ui-${order}`],
+			answerAudioSrc:
+				patientAudioManifest.assessmentAnswers[`standard-ui-${order}`],
 		};
 		if (order <= 6)
 			return {
@@ -99,6 +101,7 @@ export const standardAssessmentQuestions: StandardAssessmentQuestion[] =
 				categoryLabel: "ฟังและเข้าใจ",
 				interactionType: "yes_no_choice",
 				promptText: text,
+				expectedAnswer: [13, 14, 15].includes(order) ? "ไม่ใช่" : undefined,
 				choices: [
 					{ id: "yes", label: "ใช่" },
 					{ id: "no", label: "ไม่ใช่" },
@@ -123,6 +126,30 @@ export const standardAssessmentQuestions: StandardAssessmentQuestion[] =
 			expectedAnswer: text,
 			imageSrc: mediaFor(text)?.imageSrc,
 			questionAudioSrc: base.questionAudioSrc ?? NAMING_PROMPT_AUDIO,
+			answerAudioSrc:
+				base.answerAudioSrc ??
+				patientAudioManifest.namingAnswers[mediaFor(text)?.id ?? ""],
+			hints: [
+				{
+					level: 1,
+					type: "feature",
+					text: mediaFor(text)?.featureHint ?? "",
+					audioSrc:
+						patientAudioManifest.assessmentHints[`${base.id}-1`] ??
+						patientAudioManifest.namingHints[`${mediaFor(text)?.id}-1`],
+				},
+				{
+					level: 2,
+					type: "initial_sound",
+					text:
+						patientAudioManifest.namingInitialSyllables[
+							mediaFor(text)?.id ?? ""
+						] ?? "",
+					audioSrc:
+						patientAudioManifest.assessmentHints[`${base.id}-2`] ??
+						patientAudioManifest.namingHints[`${mediaFor(text)?.id}-2`],
+				},
+			],
 		};
 	});
 
