@@ -52,6 +52,9 @@ export function TodayTrainingClient() {
 							`${plan.categoryName} ${plan.moduleName}`,
 						);
 						const completed = plan.status === "COMPLETED";
+						const repetition = /repetition|พูดตาม/i.test(
+							`${plan.categoryName} ${plan.moduleName}`,
+						);
 						return (
 							<section
 								key={plan.dailyPlanScheduleId}
@@ -75,9 +78,9 @@ export function TodayTrainingClient() {
 								</h2>
 								{completed ? (
 									<p className="mt-4 text-xl text-[#118a82]">ฝึกแล้ว</p>
-								) : naming ? (
+								) : naming || repetition ? (
 									<Link
-										href={`/patient/training/naming/assigned/${encodeURIComponent(plan.assignedSetId)}?schedule=${encodeURIComponent(plan.dailyPlanScheduleId)}`}
+										href={`/patient/training/${repetition ? "repetition" : "naming"}/assigned/${encodeURIComponent(plan.assignedSetId)}?schedule=${encodeURIComponent(plan.dailyPlanScheduleId)}`}
 										className={`${namingButton} mt-5 min-h-20 w-full gap-3`}
 									>
 										<Play aria-hidden="true" className="h-8 w-8" />

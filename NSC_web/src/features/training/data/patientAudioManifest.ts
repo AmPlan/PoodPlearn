@@ -4,6 +4,8 @@ export const patientAudioManifest = {
 	namingHints: {} as Record<string, string>,
 	namingAnswers: {} as Record<string, string>,
 	assessmentQuestions: {} as Record<string, string>,
+	// Gemini prompt recordings for the separate 90-item Repetition catalog.
+	repetitionQuestions: {} as Record<string, string>,
 	feedback: {} as Record<string, string>,
 	milestones: {} as Record<string, string>,
 	// Full reminder clips keyed by next question number, e.g. "8".
@@ -18,6 +20,7 @@ export function approvedPatientAudio(source?: string) {
 		...Object.values(patientAudioManifest.namingHints),
 		...Object.values(patientAudioManifest.namingAnswers),
 		...Object.values(patientAudioManifest.assessmentQuestions),
+		...Object.values(patientAudioManifest.repetitionQuestions),
 		...Object.values(patientAudioManifest.feedback),
 		...Object.values(patientAudioManifest.milestones),
 		...Object.values(patientAudioManifest.remainingQuestions),

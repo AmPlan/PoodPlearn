@@ -1131,6 +1131,191 @@ test("Naming renders every supplied image without its answer, reveals only after
 	assert.equal(voice.sent[0][2], false);
 });
 
+const repetition = load("src/features/training/data/repetitionCatalog.ts", {
+	"./patientAudioManifest": {
+		patientAudioManifest: { repetitionQuestions: {} },
+	},
+});
+test("Repetition matches all 90 supplied items in exact set order; audio is explicitly pending", () => {
+	const expected = [
+		"หมา|ปลา|หมู|เสื้อ|หวี|เก้าอี้|ปากกา|กล้วยหอม|กินข้าว|ไข่ต้ม",
+		"แมว|ไก่|วัว|โต๊ะ|ส้ม|รถยนต์|ช้อนส้อม|กางเกง|ดอกไม้|อาบน้ำ",
+		"เตียง|เป็ด|ช้าง|ข้าว|สิบ|เครื่องบิน|แปรงฟัน|แก้วน้ำ|พัดลม|รองเท้า",
+		"แปรงสีฟัน|มะละกอ|วิทยุ|กากบาท|หนึ่งร้อยห้าสิบ|ฉันสบายดี|วันนี้วันเสาร์|โทรศัพท์ดังแล้ว|สี่เหลี่ยมจตุรัส|เด็กๆไปเดินเล่น",
+		"สับปะรด|จระเข้|โทรทัศน์|ไม้ขีดไฟ|สองร้อยเจ็ดสิบ|อากาศร้อนมาก|ท้องฟ้ามืดแล้ว|แม่กลับมาถึงบ้าน|สี่สิบห้าเปอร์เซ็นต์|น้ำในแก้วหมดแล้ว",
+		"ไอศกรีม|รองเท้าแตะ|โทรศัพท์|หัวแม่มือ|ร้อยแปดสิบสาม|ผมกินข้าวแล้ว|สุนัขเห่าดัง|คุณหมอนัดตอนเช้า|น้องสาวทำการบ้าน|รถติดบนถนน",
+		"ดอกไม้ในสวนสวยงาม|วันนี้ท้องฟ้าแจ่มใส|สุนัขที่บ้านตัวใหญ่มาก|ตอนเช้าอากาศเย็นสบาย|แม่ครัวทำต้มยำกุ้งน้ำข้น|โรงพยาบาลอยู่ไม่ไกลมาก|ฉันเดินเล่นที่สวนสาธารณะ|ต้นไม้ใหญ่ให้ร่มเงาเย็นสบาย|การออกกำลังกายดีต่อสุขภาพ|พระธาตุลำปางหลวงอยู่ที่จังหวัดลำปาง",
+		"พรุ่งนี้ฉันจะไปเที่ยว|ฉันชอบดื่มน้ำมะนาว|ฉันตื่นนอนตอนหกโมงเช้า|นกกาเกาะอยู่บนกิ่งไม้|ฉันชอบกินผลไม้รสเปรี้ยว|แม่ไปซื้อกับข้าวที่ตลาด|แสงแดดตอนเช้าส่องเข้ามาในห้อง|สุนัขที่บ้านของฉันตัวใหญ่มาก|พรุ่งนี้เช้าฉันจะไปโรงพยาบาล|การฝึกพูดทุกวันช่วยให้พูดชัดขึ้น",
+		"คุณหมอบอกให้พักผ่อน|เมื่อคืนฝนตกหนักมาก|ฉันลืมกุญแจไว้บนโต๊ะ|แม่บ้านทำความสะอาดบ้าน|วันนี้ฉันเดินได้เยอะขึ้นมาก|พรุ่งนี้ครอบครัวจะมาเยี่ยมฉัน|ล้างมือให้สะอาดก่อนกินอาหาร|ฉันชอบนั่งฟังเพลงเก่าเก่าตอนเช้า|เด็กนักเรียนดีใจเมื่อได้รับคำชม|การฝึกพูดทุกวันช่วยให้พูดเก่งขึ้น",
+	];
+	assert.equal(repetition.repetitionCatalog.length, 9);
+	const ids = new Set();
+	repetition.repetitionCatalog.forEach((set, i) => {
+		assert.equal(set.questions.length, 10);
+		assert.equal(set.questions.map((q) => q.text).join("|"), expected[i]);
+		assert.equal(repetition.pendingRepetitionAudio(set).length, 10);
+		set.questions.forEach((q) => ids.add(q.id));
+	});
+	assert.equal(ids.size, 90);
+});
+test("Repetition backend adapter rejects wrong categories/duplicates and sends only a real voice Blob", async () => {
+	const requests = [];
+	const api = load(
+		"src/features/training/services/repetitionFrontendService.ts",
+		{ "../data/repetitionCatalog": repetition },
+		{
+			FormData,
+			Blob,
+			fetch: async (url, options) => {
+				requests.push({ url, ...options });
+				return { ok: true, json: async () => ({ isCorrect: true }) };
+			},
+		},
+	);
+	const set = repetition.repetitionCatalog[0];
+	const items = set.questions.map((q, i) => ({
+		questionId: i + 100,
+		question: {
+			questionType: "REPETITION",
+			repetitionQuestions: [{ text: q.text }],
+		},
+	}));
+	const mapped = api.matchRepetitionSet(
+		{ setQuestions: [...items].reverse() },
+		"4",
+	);
+	assert.equal(
+		mapped.questionIds.join(","),
+		items.map((q) => q.questionId).join(","),
+	);
+	assert.throws(() =>
+		api.matchRepetitionSet(
+			{ setQuestions: [...items.slice(1), items[1]] },
+			"4",
+		),
+	);
+	assert.throws(() =>
+		api.matchRepetitionSet(
+			{
+				setQuestions: items.map((q) => ({
+					...q,
+					question: { ...q.question, questionType: "NAMING" },
+				})),
+			},
+			"4",
+		),
+	);
+	const blob = new Blob(["voice"], { type: "audio/webm" });
+	const result = await api.sendRepetitionResponse("1", "100", blob, 1500);
+	assert.equal(result.correct, true);
+	assert.equal(requests[0].url, "/api/v1/sessions/1/items");
+	assert.equal(await requests[0].body.get("voiceFile").text(), "voice");
+	assert.equal(requests[0].body.get("responseTime"), "1.5");
+	assert(!requests[0].body.has("answerText"));
+	await assert.rejects(api.sendRepetitionResponse("1", "100", new Blob(), 0));
+});
+test("Repetition UI has no difficulty labels or typed answers and blocks recording until approved audio exists", () => {
+	function setup(source, blob) {
+		const h = hooks();
+		const sent = [];
+		const ui = load(
+			"src/features/training/components/RepetitionTrainingClient.tsx",
+			{
+				"react/jsx-runtime": jsxRuntime,
+				react: h.react,
+				"next/link": { default: "a" },
+				"lucide-react": icons,
+				"@/features/auth/services/authSession": {},
+				"../data/repetitionCatalog": {
+					...repetition,
+					repetitionAudio: () => source,
+				},
+				"../data/patientAudioManifest": {
+					approvedPatientAudio: (value) => value,
+				},
+				"../hooks/useNamingMedia": {
+					useNamingMedia: () => ({
+						blob,
+						micState: blob ? "recorded" : "idle",
+						stopAudio() {},
+						play() {},
+						toggleRecording() {},
+					}),
+				},
+				"../hooks/usePracticeFlow": {},
+				"../services/repetitionFrontendService": {},
+				"./NamingLibrary": {},
+				"./PracticeFeedback": {},
+				"./QuestionDots": {},
+				"./practiceStyles": load(
+					"src/features/training/components/practiceStyles.ts",
+				),
+			},
+		);
+		return {
+			sent,
+			library: ui.RepetitionLibrary,
+			render() {
+				h.reset();
+				return ui.RepetitionQuestionView({
+					question: { id: "repetition-easy-3-1", text: "เตียง" },
+					busy: false,
+					locked: false,
+					answered: false,
+					onSubmit: async (...args) => sent.push(args),
+				});
+			},
+		};
+	}
+	const waiting = setup();
+	const tree = waiting.render();
+	assert(textOf(tree).includes("เตียง"));
+	assert(textOf(tree).includes("ยังไม่มีเสียงโจทย์"));
+	assert(
+		flatten(tree).some(
+			(n) =>
+				n.type === "button" &&
+				n.props.disabled &&
+				n.props["aria-label"] === "รอเสียงโจทย์",
+		),
+	);
+	assert(
+		!flatten(tree).some((n) => n.type === "input" || n.type === "textarea"),
+	);
+	assert(!/ง่าย|ปานกลาง|ยาก/.test(textOf(waiting.library({ preview: true }))));
+	const blob = new Blob(["patient voice"]);
+	const ready = setup("/approved.wav", blob);
+	ready.render();
+	ready.render();
+	assert.equal(ready.sent.length, 1);
+	assert.equal(ready.sent[0][0], blob);
+});
+test("Repetition 10-item flow encourages at five and ten and returns to an unfinished item before finishing", () => {
+	const h = practiceHarness(10, { perQuestionFeedback: false });
+	const milestones = [];
+	const answer = () => {
+		h.render().complete({});
+		h.fire();
+		if (h.render().cue?.kind === "milestone") {
+			milestones.push(h.render().answered);
+			h.fire();
+		}
+	};
+	for (let i = 0; i < 10; i++) {
+		if (i === 2) {
+			h.tick();
+			h.render().skip();
+		} else answer();
+	}
+	assert.equal(h.render().finished, false);
+	assert.equal(h.render().cue.kind, "remaining");
+	h.fire();
+	assert.equal(h.render().index, 2);
+	answer();
+	assert.equal(h.render().finished, true);
+	assert.deepEqual(milestones, [5, 10]);
+});
+
 test("feedback audio continues once on end and cannot advance after cancellation", async () => {
 	const h = hooks();
 	const audios = [];
