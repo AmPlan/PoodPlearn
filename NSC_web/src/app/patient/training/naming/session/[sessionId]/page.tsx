@@ -11,5 +11,5 @@ export default async function PatientNamingTrainingSessionPage({
 }: PageProps) {
   const { sessionId } = await params;
 
-  return <NamingTrainingSessionClient sessionId={sessionId} />;
+  return <NamingTrainingSessionClient key={sessionId} sessionId={sessionId} />;
 }

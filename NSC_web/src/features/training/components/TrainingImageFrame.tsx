@@ -7,18 +7,20 @@ type TrainingImageFrameProps = {
 	alt: string;
 	imageSrc?: string;
 	size?: "large" | "choice";
+	onImageError?: () => void;
 };
 
 export function TrainingImageFrame({
 	alt,
 	imageSrc,
 	size = "large",
+	onImageError,
 }: TrainingImageFrameProps) {
 	const [failedSrc, setFailedSrc] = useState<string>();
 	const isLarge = size === "large";
 
 	const frameClassName = isLarge
-		? "h-[clamp(220px,38vh,320px)] w-[clamp(220px,38vh,320px)] rounded-[34px] p-2"
+		? "h-[clamp(220px,38vh,320px)] w-[clamp(220px,38vh,320px)] max-w-full rounded-[34px] p-2"
 		: "h-[clamp(112px,20vh,164px)] w-[clamp(112px,20vh,164px)] rounded-[24px] p-2";
 
 	// Mathematically perfect inner radius (Outer Radius - 8px padding)
@@ -41,7 +43,10 @@ export function TrainingImageFrame({
 					width={isLarge ? 320 : 180}
 					height={isLarge ? 320 : 180}
 					className={`h-full w-full object-contain ${imageClassName}`}
-					onError={() => setFailedSrc(imageSrc)}
+					onError={() => {
+						setFailedSrc(imageSrc);
+						onImageError?.();
+					}}
 				/>
 			)}
 		</div>
