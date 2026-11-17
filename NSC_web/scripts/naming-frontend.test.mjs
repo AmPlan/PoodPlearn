@@ -1545,6 +1545,192 @@ test("Comprehension incorrect answers get supportive wording and automatically a
 	assert.equal(h.render().index, 1);
 });
 
+const spontaneousData = load(
+	"src/features/training/data/spontaneousCatalog.ts",
+	{
+		"./patientAudioManifest": {
+			patientAudioManifest: { spontaneousQuestions: {} },
+		},
+	},
+);
+test("Spontaneous preserves all 90 supplied questions and separates answers from prompts", () => {
+	const personal = (gender) =>
+		`คุณชื่ออะไร|คุณนามสกุลอะไร|บ้านของคุณอยู่ที่จังหวัดอะไร|${gender}|คุณมีอาชีพอะไร|คุณเกิดวันที่เท่าไหร่|คุณเกิดเดือนอะไร|คุณเกิดปีพ.ศ.อะไร|หนึ่งสัปดาห์มีกี่วัน (เจ็ดวัน)|หนึ่งปีมีกี่เดือน (สิบสองเดือน)`;
+	const expected = [
+		personal("คุณเป็นผู้หญิงหรือผู้ชาย"),
+		personal("คุณเป็นผู้ชายหรือผู้หญิง"),
+		personal("คุณเป็นเพศอะไร"),
+		"เกลือมีรส…(เค็ม)|ใบไม้มีสี…(เขียว)|แอปเปิ้ลเป็นผลไม้ที่มีสี…(แดง)|พระอาทิตย์ขึ้นตอน…(เช้า)|ดินสอใช้สำหรับ…(เขียน)|นกบินอยู่บน…(ฟ้า)|รถวิ่งอยู่บน…(ถนน)|อยากดูละครต้องเปิด…(ทีวี)|อยากรู้เวลาต้องดู…(นาฬิกา)|เสื้อผ้ายับเราต้องใช้…(เตารีด)",
+		"น้ำตาลมีรส…(หวาน)|กล้วยเป็นผลไม้ที่มีสี…(เหลือง)|นมวัวมีสี…(ขาว)|พระจันทร์ออกมาตอน…(กลางคืน)|น้ำแข็งทำมาจาก…(น้ำ)|ว่าวลอยอยู่บน…(ฟ้า)|เรือแล่นอยู่ใน…(น้ำ)|มืดแล้วต้องเปิด…(ไฟ)|อยากรู้วันที่ต้องดู…(ปฏิทิน)|ผมยุ่งเราต้องใช้…(หวี)",
+		"มะนาวมีรส…(เปรี้ยว)|ส้มเป็นผลไม้ที่มีสี…(ส้ม)|ปลาว่ายอยู่ใน…(น้ำ)|ลูกบอลมีรูปร่าง…(กลม)|ฝนตกทำให้พื้น…(เปียก)|หนังสือใช้สำหรับ…(อ่าน)|เครื่องบินอยู่บน…(ท้องฟ้า)|เรานั่งอยู่บน…(เก้าอี้)|เวลาแต่งตัวต้องส่อง…(กระจก)|ตามองเห็นไม่ชัดต้องใส่…(แว่นตา)",
+		"ไก่งามเพราะขน คนงามเพราะ…(แต่ง)|คนรักเท่าผืนหนัง คนชังเท่าผืน…(เสื่อ)|คุณทำอะไรเมื่อหิวข้าว (กินข้าว)|ดวงอาทิตย์ขึ้นทางทิศไหน (ทิศตะวันออก)|เรามีนิ้วมือทั้งหมดกี่นิ้ว (สิบนิ้ว)|คุณใช้อะไรแปรงฟัน (แปรงสีฟัน)|หนึ่งวันมีกี่ชั่วโมง (ยี่สิบสี่ชั่วโมง)|เมื่อไม่สบาย ต้องไปที่ไหน (โรงพยาบาล)|ถ้าอยากขึ้นรถไฟต้องไปที่ไหน (สถานีรถไฟ)|จังหวัดลำปางอยู่ภาคอะไรของประเทศไทย (ภาคเหนือ)",
+		"ดูช้างให้ดูหาง ดูนางให้ดู…(แม่)|น้ำร้อนปลาเป็น น้ำเย็นปลา…(ตาย)|คุณทำอะไรเมื่อง่วง (นอนหลับ)|ดวงอาทิตย์ตกทางทิศไหน (ทิศตะวันตก)|ดวงอาทิตย์ตกตอนไหน (ตอนเย็น)|ไข่หนึ่งโหลมีกี่ฟอง (สิบสองฟอง)|หนึ่งชั่วโมงมีกี่นาที (หกสิบนาที)|เด็กนักเรียนเรียนหนังสือที่ไหน (โรงเรียน)|ถ้าอยากขึ้นเครื่องบินต้องไปที่ไหน (สนามบิน)|จังหวัดเชียงใหม่อยู่ภาคอะไรของประเทศไทย (ภาคเหนือ)",
+		"ตกน้ำไม่ไหล ตกไฟไม่…(ไหม้)|น้ำพึ่งเรือ เสือพึ่ง…(ป่า)|คุณทำอะไรเมื่อหิวน้ำ (กินน้ำ)|ฝนตกมากในฤดูอะไร (ฤดูฝน)|ดวงอาทิตย์ขึ้นตอนไหน (ตอนเช้า)|รถยนต์มีกี่ล้อ (สี่ล้อ)|หนึ่งวันมีกี่ชั่วโมง (ยี่สิบสี่ชั่วโมง)|ตำรวจทำงานที่ไหน (สถานีตำรวจ)|ถ้าอยากไหว้พระทำบุญต้องไปที่ไหน (วัด)|จังหวัดเชียงรายอยู่ภาคอะไรของประเทศไทย (ภาคเหนือ)",
+	];
+	assert.equal(spontaneousData.spontaneousCatalog.length, 9);
+	const all = spontaneousData.spontaneousCatalog.flatMap(
+		(set) => set.questions,
+	);
+	assert.equal(new Set(all.map((q) => q.id)).size, 90);
+	assert.equal(all.filter((q) => q.patientField).length, 24);
+	assert(
+		all
+			.filter((q) => q.patientField)
+			.every((q) => q.referenceAnswers.length === 0),
+	);
+	spontaneousData.spontaneousCatalog.forEach((set, index) => {
+		assert.equal(set.questions.length, 10);
+		assert.equal(
+			set.questions.map((q) => q.sourceText).join("|"),
+			expected[index],
+		);
+		assert.equal(spontaneousData.pendingSpontaneousAudio(set).length, 10);
+		for (const q of set.questions) {
+			assert(!/[()]/.test(q.text));
+			assert.equal(
+				q.text,
+				q.sourceText.replace(/\s*\([^()]*\)\s*$/, "").trim(),
+			);
+			assert.equal(
+				q.referenceAnswers[0],
+				q.sourceText.match(/\(([^()]*)\)\s*$/)?.[1],
+			);
+		}
+	});
+});
+test("Spontaneous API matches clean questions and submits only actual voice, never supplied answer keys", async () => {
+	const requests = [];
+	const api = load(
+		"src/features/training/services/spontaneousFrontendService.ts",
+		{ "../data/spontaneousCatalog": spontaneousData },
+		{
+			FormData,
+			fetch: async (url, options) => {
+				requests.push({ url, ...options });
+				return { ok: true, json: async () => ({}) };
+			},
+		},
+	);
+	const set = spontaneousData.spontaneousCatalog[3];
+	const items = set.questions.map((q, i) => ({
+		questionId: i + 100,
+		question: {
+			questionType: "SPONTANEOUS",
+			spontaneousQuestions: [{ questionText: i % 2 ? q.sourceText : q.text }],
+		},
+	}));
+	const mapped = api.matchSpontaneousSet(
+		{ setQuestions: [...items].reverse() },
+		"5",
+	);
+	assert.equal(
+		mapped.questionIds.join(","),
+		items.map((q) => q.questionId).join(","),
+	);
+	assert.throws(() =>
+		api.matchSpontaneousSet(
+			{ setQuestions: [...items.slice(1), items[1]] },
+			"5",
+		),
+	);
+	assert.throws(() =>
+		api.matchSpontaneousSet(
+			{
+				setQuestions: items.map((q) => ({
+					...q,
+					question: { ...q.question, questionType: "REPETITION" },
+				})),
+			},
+			"5",
+		),
+	);
+	const blob = new Blob(["spoken answer"], { type: "audio/webm" });
+	const result = await api.sendSpontaneousResponse("1", "100", blob, 1250);
+	assert.equal(result.correct, undefined);
+	const form = requests[0].body;
+	assert.equal(await form.get("voiceFile").text(), "spoken answer");
+	assert.equal(form.get("responseTime"), "1.25");
+	assert(!form.has("answerText"));
+	assert(!form.has("referenceAnswers"));
+	assert(!form.has("isCorrect"));
+	await assert.rejects(api.sendSpontaneousResponse("1", "100", new Blob(), 0));
+});
+test("Spontaneous UI renders prompts without bracketed answers and accepts voice once without typing", () => {
+	function setup(blob) {
+		const h = hooks();
+		const sent = [];
+		const ui = load(
+			"src/features/training/components/SpontaneousTrainingClient.tsx",
+			{
+				"react/jsx-runtime": jsxRuntime,
+				react: h.react,
+				"next/link": { default: "a" },
+				"lucide-react": icons,
+				"@/features/auth/services/authSession": {},
+				"../data/spontaneousCatalog": spontaneousData,
+				"../data/patientAudioManifest": {
+					approvedPatientAudio: () => undefined,
+				},
+				"../hooks/useNamingMedia": {
+					useNamingMedia: () => ({
+						blob,
+						micState: blob ? "recorded" : "idle",
+						stopAudio() {},
+						play() {},
+						toggleRecording() {},
+					}),
+				},
+				"../hooks/usePracticeFlow": {},
+				"../services/spontaneousFrontendService": {},
+				"./NamingLibrary": {},
+				"./PracticeFeedback": {},
+				"./QuestionDots": {},
+				"./practiceStyles": load(
+					"src/features/training/components/practiceStyles.ts",
+				),
+			},
+		);
+		return {
+			sent,
+			library: ui.SpontaneousLibrary,
+			render(question) {
+				h.reset();
+				return ui.SpontaneousQuestionView({
+					question,
+					locked: false,
+					answered: false,
+					busy: false,
+					onSubmit: async (...args) => sent.push(args),
+				});
+			},
+		};
+	}
+	const blank = setup();
+	for (const question of spontaneousData.spontaneousCatalog.flatMap(
+		(set) => set.questions,
+	)) {
+		const tree = blank.render(question);
+		assert(textOf(tree).includes(question.text));
+		assert(!/[()]/.test(textOf(tree)));
+		if (
+			question.referenceAnswers[0] &&
+			!question.text.includes(question.referenceAnswers[0])
+		)
+			assert(!textOf(tree).includes(question.referenceAnswers[0]));
+		assert(
+			!flatten(tree).some((n) => n.type === "input" || n.type === "textarea"),
+		);
+	}
+	assert(!/ง่าย|ปานกลาง|ยาก/.test(textOf(blank.library({ preview: true }))));
+	const blob = new Blob(["voice"]);
+	const recorded = setup(blob);
+	const question = spontaneousData.spontaneousCatalog[3].questions[0];
+	recorded.render(question);
+	recorded.render(question);
+	assert.equal(recorded.sent.length, 1);
+	assert.equal(recorded.sent[0][0], blob);
+});
+
 test("feedback audio continues once on end and cannot advance after cancellation", async () => {
 	const h = hooks();
 	const audios = [];
