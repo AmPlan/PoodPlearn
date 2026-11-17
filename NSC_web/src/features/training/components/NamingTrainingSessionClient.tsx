@@ -608,7 +608,14 @@ export function NamingQuestion({
 					{!answered && (
 						<button
 							type="button"
-							disabled={locked || recording || revealed}
+							disabled={
+								locked ||
+								recording ||
+								revealed ||
+								(hints === 1 &&
+									!patientAudioManifest.namingHints[`${question.id}-2`] &&
+									!patientAudioManifest.namingInitialSyllables[question.id])
+							}
 							onClick={() => {
 								media.stopAudio();
 								if (hints < 2) {
@@ -617,7 +624,12 @@ export function NamingQuestion({
 									const audio =
 										patientAudioManifest.namingHints[`${question.id}-${next}`];
 									if (audio) void media.play(audio);
-								} else setRevealed(true);
+								} else {
+									setRevealed(true);
+									const answerAudio =
+										patientAudioManifest.namingAnswers[question.id];
+									if (answerAudio) void media.play(answerAudio);
+								}
 							}}
 							className={practiceAction}
 						>
@@ -663,9 +675,17 @@ export function NamingQuestion({
 							</>
 						) : hints > 0 ? (
 							<p className="text-xl leading-8 text-[#526f65]">
-								{hints === 1 ? question.featureHint : question.initialHint}
+								{hints === 1
+									? question.featureHint
+									: (patientAudioManifest.namingInitialSyllables[question.id] ??
+										question.initialHint)}
 							</p>
 						) : null}
+						{hints === 1 &&
+							!patientAudioManifest.namingHints[`${question.id}-2`] &&
+							!patientAudioManifest.namingInitialSyllables[question.id] && (
+								<p className="mt-2 text-base text-[#638078]">รอคำใบ้พยางค์แรก</p>
+							)}
 					</div>
 				)}
 				{imageFailed && (

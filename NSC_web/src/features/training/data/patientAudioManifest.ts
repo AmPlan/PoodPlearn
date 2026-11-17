@@ -2,6 +2,8 @@
 export const patientAudioManifest = {
 	namingPrompt: "/training_sounds/Naming_Question.wav",
 	namingHints: {} as Record<string, string>,
+	// Verified first syllables, supplied separately; never infer from the first letter.
+	namingInitialSyllables: {} as Record<string, string>,
 	namingAnswers: {} as Record<string, string>,
 	assessmentQuestions: {} as Record<string, string>,
 	// Gemini prompt recordings for the separate 90-item Repetition catalog.

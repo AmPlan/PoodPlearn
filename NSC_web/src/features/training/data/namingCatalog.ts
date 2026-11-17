@@ -248,7 +248,7 @@ export const namingCatalog: CatalogSet[] = definitions.map(
 						id: `${id}-${index + 1}`,
 						answer,
 						featureHint,
-						initialHint: `เริ่มต้นด้วยตัวอักษร “${answer.match(/[ก-ฮ]/)?.[0] ?? ""}”`,
+						initialHint: "รอคำใบ้พยางค์แรก",
 						imageSrc: `/training_images/${folder}/${stem}.png`,
 						answerAudioSrc: missingAudio
 							? undefined

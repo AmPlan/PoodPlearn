@@ -42,10 +42,12 @@ export function useNamingMedia(onError: (message: string) => void) {
 	}, [stopAudio, releaseHardware]);
 
 	const play = useCallback(
-		async (src?: string, onEnded?: () => void) => {
+		async (src?: string, onEnded?: () => void, rate = 1) => {
 			if (!src || busy.current) return;
 			stopAudio();
 			const next = new Audio(src);
+			next.playbackRate = rate;
+			next.preservesPitch = true;
 			audio.current = next;
 			let ended = false;
 			const finish = () => {

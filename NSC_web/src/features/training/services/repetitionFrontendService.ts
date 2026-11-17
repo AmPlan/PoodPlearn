@@ -88,6 +88,7 @@ export async function sendRepetitionResponse(
 	questionId: string,
 	blob: Blob,
 	responseTimeMs: number,
+	hintsUsed = 0,
 ) {
 	numericId(sessionId);
 	numericId(questionId);
@@ -96,7 +97,7 @@ export async function sendRepetitionResponse(
 	form.append("questionId", questionId);
 	form.append("voiceFile", blob);
 	form.append("responseTime", String(Math.max(0, responseTimeMs) / 1000));
-	form.append("hintsUsed", "0");
+	form.append("hintsUsed", String(hintsUsed));
 	const body = await request<{ isCorrect?: boolean }>(
 		`/api/v1/sessions/${sessionId}/items`,
 		{ method: "POST", body: form },

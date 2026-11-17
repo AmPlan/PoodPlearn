@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { PracticeHints } from "./PracticeHints";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	ArrowLeft,
@@ -308,7 +309,7 @@ export function RepetitionRound({
 			active = false;
 		};
 	}, [canSave, sessionId, schedule, saveAttempt]);
-	async function submit(blob: Blob, timeMs: number) {
+	async function submit(blob: Blob, timeMs: number, hintsUsed = 0) {
 		if (
 			lock.current ||
 			flow.cue ||
@@ -326,6 +327,7 @@ export function RepetitionRound({
 							set.questionIds[flow.index],
 							blob,
 							timeMs,
+							hintsUsed,
 						)
 					: { correct: undefined };
 			if (alive.current)
@@ -489,9 +491,10 @@ export function RepetitionQuestionView({
 	locked: boolean;
 	answered: boolean;
 	busy: boolean;
-	onSubmit: (blob: Blob, timeMs: number) => Promise<void>;
+	onSubmit: (blob: Blob, timeMs: number, hintsUsed?: number) => Promise<void>;
 }) {
 	const [error, setError] = useState("");
+	const [hintsUsed, setHintsUsed] = useState(0);
 	const media = useNamingMedia(setError);
 	const { stopAudio } = media;
 	const sent = useRef<Blob | undefined>(undefined);
@@ -508,8 +511,9 @@ export function RepetitionQuestionView({
 		if (locked) stopAudio();
 	}, [locked, stopAudio]);
 	const send = useCallback(
-		(blob: Blob) => onSubmit(blob, Math.max(0, Date.now() - started.current)),
-		[onSubmit],
+		(blob: Blob) =>
+			onSubmit(blob, Math.max(0, Date.now() - started.current), hintsUsed),
+		[onSubmit, hintsUsed],
 	);
 	useEffect(() => {
 		if (
@@ -600,6 +604,16 @@ export function RepetitionQuestionView({
 					<Volume2 aria-hidden="true" />
 					ฟังโจทย์
 				</button>
+				{!answered && (
+					<PracticeHints
+						category="repetition"
+						source={source}
+						answer={question.text}
+						disabled={locked || recording}
+						play={media.play}
+						onCount={setHintsUsed}
+					/>
+				)}
 				{!source && <p className="text-base text-[#638078]">ยังไม่มีเสียงโจทย์</p>}
 				{error && (
 					<p role="alert" className="text-lg text-amber-900">

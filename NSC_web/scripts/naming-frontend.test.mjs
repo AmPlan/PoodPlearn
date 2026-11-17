@@ -9,6 +9,52 @@ import { fileURLToPath } from "node:url";
 import * as jsxRuntime from "react/jsx-runtime";
 import * as icons from "lucide-react";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+test("Practice cues follow the agreed replay/reveal order and never reveal before the last step", async () => {
+	for (const [category, maximum, rates] of [
+		["spontaneous", 2, [1]],
+		["comprehension", 3, [1, 1]],
+		["repetition", 3, [0.75, 0.5, 1]],
+	]) {
+		const h = hooks();
+		const played = [];
+		const counts = [];
+		const { PracticeHints } = load(
+			"src/features/training/components/PracticeHints.tsx",
+			{
+				react: h.react,
+				"react/jsx-runtime": jsxRuntime,
+				"lucide-react": icons,
+				"./practiceStyles": {},
+			},
+		);
+		const props = {
+			category,
+			source: "/approved.wav",
+			answer: "เฉลยทดสอบ",
+			disabled: false,
+			play: async (source, ended, rate) => played.push(rate),
+			onCount: (n) => counts.push(n),
+		};
+		const render = () => {
+			h.reset();
+			return PracticeHints(props);
+		};
+		for (let step = 0; step < maximum; step++) {
+			const view = render();
+			assert(!textOf(view).includes(props.answer));
+			await flatten(view)
+				.find((node) => node?.type === "button")
+				.props.onClick();
+		}
+		const view = render();
+		assert(textOf(view).includes(props.answer));
+		assert(
+			flatten(view).find((node) => node?.type === "button").props.disabled,
+		);
+		assert.deepEqual(played, rates);
+		assert.equal(counts.length, maximum);
+	}
+});
 function load(relative, imports = {}, globals = {}) {
 	const result = { exports: {} };
 	const source = fs.readFileSync(path.join(root, relative), "utf8");
@@ -918,6 +964,9 @@ test("Repetition shows its actual sentence; recording submits a blob once withou
 				"@/features/training/hooks/usePracticeFlow": {},
 				"@/features/training/components/QuestionDots": {},
 				"@/features/training/components/practiceStyles": {},
+				"@/features/training/components/PracticeHints": {
+					PracticeHints: () => null,
+				},
 				"@/features/training/components/PracticeFeedback": {},
 				"@/features/training/components/TrainingImageFrame": {
 					TrainingImageFrame: "image",
@@ -1048,6 +1097,7 @@ test("Naming renders every supplied image without its answer, reveals only after
 				react: h.react,
 				"next/link": { default: "a" },
 				"lucide-react": icons,
+				"./PracticeHints": { PracticeHints: () => null },
 				"./practiceStyles": load(
 					"src/features/training/components/practiceStyles.ts",
 				),
@@ -1066,7 +1116,11 @@ test("Naming renders every supplied image without its answer, reveals only after
 				"./QuestionDots": {},
 				"./PracticeFeedback": {},
 				"../data/patientAudioManifest": {
-					patientAudioManifest: { namingHints: {}, namingAnswers: {} },
+					patientAudioManifest: {
+						namingHints: {},
+						namingAnswers: {},
+						namingInitialSyllables: {},
+					},
 				},
 				"../services/namingFrontendService": {},
 				"../services/pn002NamingService": {},
@@ -1207,7 +1261,8 @@ test("Repetition backend adapter rejects wrong categories/duplicates and sends o
 		),
 	);
 	const blob = new Blob(["voice"], { type: "audio/webm" });
-	const result = await api.sendRepetitionResponse("1", "100", blob, 1500);
+	const result = await api.sendRepetitionResponse("1", "100", blob, 1500, 2);
+	assert.equal(requests[0].body.get("hintsUsed"), "2");
 	assert.equal(result.correct, true);
 	assert.equal(requests[0].url, "/api/v1/sessions/1/items");
 	assert.equal(await requests[0].body.get("voiceFile").text(), "voice");
@@ -1248,6 +1303,7 @@ test("Repetition UI has no difficulty labels or typed answers and blocks recordi
 				"./NamingLibrary": {},
 				"./PracticeFeedback": {},
 				"./QuestionDots": {},
+				"./PracticeHints": { PracticeHints: () => null },
 				"./practiceStyles": load(
 					"src/features/training/components/practiceStyles.ts",
 				),
@@ -1516,6 +1572,7 @@ test("Comprehension patient UI never displays unfilled personal templates and de
 			"./NamingLibrary": {},
 			"./PracticeFeedback": {},
 			"./QuestionDots": {},
+			"./PracticeHints": { PracticeHints: () => null },
 			"./practiceStyles": load(
 				"src/features/training/components/practiceStyles.ts",
 			),
@@ -1646,7 +1703,8 @@ test("Spontaneous API matches clean questions and submits only actual voice, nev
 		),
 	);
 	const blob = new Blob(["spoken answer"], { type: "audio/webm" });
-	const result = await api.sendSpontaneousResponse("1", "100", blob, 1250);
+	const result = await api.sendSpontaneousResponse("1", "100", blob, 1250, 1);
+	assert.equal(requests[0].body.get("hintsUsed"), "1");
 	assert.equal(result.correct, undefined);
 	const form = requests[0].body;
 	assert.equal(await form.get("voiceFile").text(), "spoken answer");
@@ -1686,6 +1744,7 @@ test("Spontaneous UI renders prompts without bracketed answers and accepts voice
 				"./NamingLibrary": {},
 				"./PracticeFeedback": {},
 				"./QuestionDots": {},
+				"./PracticeHints": { PracticeHints: () => null },
 				"./practiceStyles": load(
 					"src/features/training/components/practiceStyles.ts",
 				),

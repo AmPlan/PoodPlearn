@@ -1,4 +1,5 @@
 "use client";
+import { PracticeHints } from "@/features/training/components/PracticeHints";
 import Link from "next/link";
 import {
 	practicePage,
@@ -257,6 +258,8 @@ export function AssessmentRound({
 }
 
 export function AssessmentQuestion({
+	practiceAnswer,
+	usePracticeHints = false,
 	question,
 	locked,
 	answered,
@@ -264,6 +267,8 @@ export function AssessmentQuestion({
 	onSubmit,
 }: {
 	question: StandardAssessmentQuestion;
+	practiceAnswer?: string;
+	usePracticeHints?: boolean;
 	locked: boolean;
 	answered: boolean;
 	busy: boolean;
@@ -498,7 +503,7 @@ export function AssessmentQuestion({
 						<Volume2 aria-hidden="true" className="h-5 w-5" />
 						ฟังโจทย์
 					</button>
-					{availableHints.length > 0 && (
+					{!usePracticeHints && availableHints.length > 0 && (
 						<button
 							type="button"
 							disabled={locked || recording || hints >= availableHints.length}
@@ -510,8 +515,18 @@ export function AssessmentQuestion({
 						</button>
 					)}
 				</div>
+				{usePracticeHints && !answered && (
+					<PracticeHints
+						category="comprehension"
+						source={source}
+						answer={practiceAnswer}
+						disabled={locked || recording}
+						play={media.play}
+						onCount={setHints}
+					/>
+				)}
 				{!source && <p className="text-base text-[#829990]">ยังไม่มีเสียงโจทย์</p>}
-				{hints > 0 && (
+				{!usePracticeHints && hints > 0 && (
 					<p
 						role="status"
 						className="max-w-sm text-center text-xl leading-8 text-[#526f65]"

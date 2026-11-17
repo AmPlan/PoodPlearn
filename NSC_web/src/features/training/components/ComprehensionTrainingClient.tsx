@@ -533,6 +533,16 @@ export function ComprehensionQuestionView({
 		);
 	return (
 		<AssessmentQuestion
+			usePracticeHints
+			practiceAnswer={
+				question.interactionType === "image_choice"
+					? question.target
+					: typeof question.expectedBoolean === "boolean"
+						? question.expectedBoolean
+							? "ใช่"
+							: "ไม่ใช่"
+						: undefined
+			}
 			question={question}
 			locked={locked}
 			answered={answered}
