@@ -41,18 +41,34 @@ export function useNamingMedia(onError: (message: string) => void) {
 		setMicState("idle");
 	}, [stopAudio, releaseHardware]);
 
-	async function play(src?: string) {
-		if (!src || busy.current) return;
-		stopAudio();
-		const next = new Audio(src);
-		audio.current = next;
-		try {
-			await next.play();
-		} catch {
-			if (audio.current === next)
-				onError("เล่นไฟล์เสียงไม่ได้ กรุณาลองอีกครั้ง คุณยังฝึกต่อได้โดยไม่เปิดเสียง");
-		}
-	}
+	const play = useCallback(
+		async (src?: string, onEnded?: () => void) => {
+			if (!src || busy.current) return;
+			stopAudio();
+			const next = new Audio(src);
+			audio.current = next;
+			let ended = false;
+			const finish = () => {
+				if (!ended && audio.current === next) {
+					ended = true;
+					onEnded?.();
+				}
+			};
+			next.onended = finish;
+			next.onerror = () => {
+				if (audio.current === next) onError("เล่นเสียงไม่ได้ คุณยังฝึกต่อได้");
+				finish();
+			};
+			try {
+				await next.play();
+			} catch {
+				if (audio.current === next)
+					onError("เล่นไฟล์เสียงไม่ได้ กรุณาลองอีกครั้ง คุณยังฝึกต่อได้โดยไม่เปิดเสียง");
+				finish();
+			}
+		},
+		[stopAudio, onError],
+	);
 
 	async function toggleRecording(): Promise<boolean> {
 		if (micState === "recording" && recorder.current) {

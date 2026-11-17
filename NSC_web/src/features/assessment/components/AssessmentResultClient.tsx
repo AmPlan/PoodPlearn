@@ -29,7 +29,7 @@ export function AssessmentResultClient() {
 		<main className="flex min-h-dvh items-center justify-center bg-[#edf9f6] p-5 text-[#173d3f]">
 			<section className="w-full max-w-xl rounded-3xl bg-white p-6 text-center shadow-sm sm:p-10">
 				{error ? (
-					<p role="alert" className="text-xl text-red-800">
+					<p role="alert" className="text-xl text-amber-900">
 						{error}
 					</p>
 				) : !result ? (

@@ -21,17 +21,21 @@ export function TrainingImageFrame({
 
 	const frameClassName =
 		size === "naming"
-			? "h-[clamp(150px,27dvh,300px)] w-full max-w-lg rounded-3xl p-2"
+			? "h-[clamp(270px,41dvh,440px)] w-full max-w-[820px] lg:h-[clamp(400px,64dvh,720px)]"
 			: isLarge
 				? "h-[clamp(220px,38vh,320px)] w-[clamp(220px,38vh,320px)] max-w-full rounded-[34px] p-2"
-				: "h-[clamp(112px,20vh,164px)] w-[clamp(112px,20vh,164px)] rounded-[24px] p-2";
+				: "aspect-square w-full min-w-0";
 
-	// Mathematically perfect inner radius (Outer Radius - 8px padding)
-	const imageClassName = isLarge ? "rounded-[26px]" : "rounded-[16px]";
+	const imageClassName =
+		size === "naming"
+			? "mix-blend-multiply"
+			: isLarge
+				? "rounded-[26px]"
+				: "rounded-[20px] mix-blend-multiply";
 
 	return (
 		<div
-			className={`flex shrink-0 items-center justify-center overflow-hidden bg-white/90 shadow-sm ring-1 ring-inset ring-[#CDEEEF] ${frameClassName}`}
+			className={`flex shrink-0 items-center justify-center ${size === "large" ? "overflow-hidden bg-white/90 shadow-sm ring-1 ring-inset ring-[#CDEEEF]" : ""} ${frameClassName}`}
 		>
 			{!imageSrc || failedSrc === imageSrc ? (
 				<div
@@ -43,8 +47,15 @@ export function TrainingImageFrame({
 				<Image
 					src={imageSrc}
 					alt={alt}
-					width={isLarge ? 320 : 180}
-					height={isLarge ? 320 : 180}
+					width={size === "naming" ? 820 : isLarge ? 320 : 400}
+					height={size === "naming" ? 720 : isLarge ? 320 : 400}
+					sizes={
+						size === "naming"
+							? "(min-width: 1024px) 58vw, 95vw"
+							: size === "choice"
+								? "(min-width: 1024px) 320px, (min-width: 640px) 29vw, 44vw"
+								: undefined
+					}
 					className={`h-full w-full object-contain ${imageClassName}`}
 					onError={() => {
 						setFailedSrc(imageSrc);

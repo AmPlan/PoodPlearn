@@ -1,5 +1,7 @@
 # Patient frontend workflow
 
+> Latest supportive feedback, clickable question circles, revisitable skips and automatic progression: [patient-practice-interactions.md](patient-practice-interactions.md).
+
 > Full 30-question content, distractors, minimal Login and owner-confirmed audio policy: see [standard-assessment-content.md](standard-assessment-content.md). Its details supersede the earlier three-item preview and audio notes below.
 
 ## Development preview without a PN account
@@ -35,7 +37,7 @@ flowchart TD
 - Difficulty remains internal data. No easy/medium/hard labels are displayed on patient Naming intro, library, practice, summary, home plan labels or assessment results. Patients see categories and set numbers.
 - Naming has no typing controls or typed-answer API field. The main action is a 144–176 px circular microphone; after recording, an assigned session uses the same central control to send the audio. Next unlocks after submission, or after reveal. Local additional practice may move on after recording without an API result.
 - Naming hints are bottom left, next is bottom right, and Skip is secondary. Short Thai captions accompany pictograms; longer explanations are collapsed under caregiver details.
-- Naming images use `object-contain` and responsive sizing. Existing media paths and the 135-word ordering are unchanged. Missing ผ้าเช็ดตัว still blocks objects set 3.
+- Naming images use `object-contain` and responsive sizing. Existing media paths and the 135-word ordering are unchanged. The owner-supplied ผ้าเช็ดตัว completes objects set 3; all nine sets now have complete images.
 - Standard assessment voice tasks use a central 160–192 px microphone and real audio only. No text entry or fabricated `mockAnswer` is submitted. Image-choice and yes/no tasks retain their backend-defined interaction types; they are not converted to a different assessment.
 - Assessment question count is taken from API questions, not assumed to be 15 or 30. Existing provided non-answer hints may be requested; usage counts are sent via the existing metadata fields. No hint text or sound is invented for the assessment.
 - Shared recorder handles permission errors, actual MIME types, late permissions after exit and hardware cleanup. Assessment delayed navigation and milestone audio are cleaned up on exit.

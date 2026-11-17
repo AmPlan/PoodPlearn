@@ -18,7 +18,7 @@ Only frontend files, documentation and frontend tests were changed. No database,
 `src/features/training/data/namingCatalog.ts` contains the exact 135 words and their requested order, feature hints, first-consonant hints, and existing asset paths.
 
 - 9 sets × 15 questions; 3 difficulty levels.
-- 134 matching images available; **ผ้าเช็ดตัว** is missing (`equipments/set3/towel.png` is the suggested future path, not a placeholder image).
+- 135 matching images available. The owner-supplied **ผ้าเช็ดตัว** is stored at `equipments/set3/towel.png`; all nine sets have complete images.
 - Medium set 3 has 14/15 images and cannot start, including via a direct URL.
 - Animal displayed set 1 uses the existing `animals/set2` files; displayed set 2 uses `animals/set1`. Files were not renamed or replaced.
 - Kettle and soap use the accepted original images.

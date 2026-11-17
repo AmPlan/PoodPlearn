@@ -4,6 +4,11 @@ export const patientAudioManifest = {
 	namingHints: {} as Record<string, string>,
 	namingAnswers: {} as Record<string, string>,
 	assessmentQuestions: {} as Record<string, string>,
+	feedback: {} as Record<string, string>,
+	milestones: {} as Record<string, string>,
+	// Full reminder clips keyed by next question number, e.g. "8".
+	// The owner supplies the actual recordings; never synthesize or guess a clip.
+	remainingQuestions: {} as Record<string, string>,
 };
 
 export function approvedPatientAudio(source?: string) {
@@ -13,6 +18,9 @@ export function approvedPatientAudio(source?: string) {
 		...Object.values(patientAudioManifest.namingHints),
 		...Object.values(patientAudioManifest.namingAnswers),
 		...Object.values(patientAudioManifest.assessmentQuestions),
+		...Object.values(patientAudioManifest.feedback),
+		...Object.values(patientAudioManifest.milestones),
+		...Object.values(patientAudioManifest.remainingQuestions),
 	];
 	try {
 		const path = new URL(source, "http://local-preview").pathname;

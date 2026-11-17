@@ -136,7 +136,10 @@ export const assessmentMediaPending = {
 		.filter(
 			(question) =>
 				question.interactionType === "image_choice" &&
-				!question.choices?.length,
+				(!question.choices?.length ||
+					question.choices.some(
+						(choice) => !choice.imageSrc && !choice.imageUrl,
+					)),
 		)
 		.map((question) => question.order),
 	audioOrders: standardAssessmentQuestions

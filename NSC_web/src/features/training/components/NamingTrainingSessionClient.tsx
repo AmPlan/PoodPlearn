@@ -1,6 +1,13 @@
-﻿"use client";
+"use client";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import {
+	practicePage,
+	practiceScene,
+	practiceQuietButton,
+	practiceAction,
+	practiceMic,
+} from "./practiceStyles";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	ArrowLeft,
 	ArrowRight,
@@ -11,7 +18,6 @@ import {
 	Mic,
 	Play,
 	RotateCcw,
-	Send,
 	SkipForward,
 	Square,
 	Volume2,
@@ -23,11 +29,17 @@ import {
 	NAMING_PROMPT_AUDIO,
 } from "../data/namingCatalog";
 import { useNamingMedia } from "../hooks/useNamingMedia";
-import { patientAudioManifest } from "../data/patientAudioManifest";
+import { usePracticeFlow } from "../hooks/usePracticeFlow";
+import { QuestionDots } from "./QuestionDots";
+import { PracticeFeedback } from "./PracticeFeedback";
+import type { CatalogQuestion } from "../data/namingCatalog";
+import {
+	approvedPatientAudio,
+	patientAudioManifest,
+} from "../data/patientAudioManifest";
 import {
 	loadAssignedNamingSet,
 	sendNamingResponse,
-	summarizeRound,
 	type NamingRunSet,
 	type RoundResponse,
 } from "../services/namingFrontendService";
@@ -136,13 +148,13 @@ export function NamingTrainingSessionClient({
 			/>
 		);
 	return (
-		<main className={namingPage}>
-			<div className="mx-auto max-w-2xl">
-				<Link className={namingSecondary} href={homeHref}>
+		<main className={practicePage}>
+			<div className="mx-auto flex min-h-[calc(100dvh_-_var(--preview-bar-height,0px))] max-w-3xl flex-col px-6 py-5">
+				<Link className={`${practiceQuietButton} self-start`} href={homeHref}>
 					<ArrowLeft aria-hidden="true" className="mr-2 h-7 w-7" />
 					กลับ
 				</Link>
-				<section className="mt-5 rounded-3xl bg-white p-6 text-center shadow-sm sm:p-10">
+				<section className="flex flex-1 flex-col items-center justify-center py-8 text-center">
 					{!loaded ? (
 						<p role="status" className="text-xl">
 							กำลังโหลด…
@@ -177,7 +189,7 @@ export function NamingTrainingSessionClient({
 									type="button"
 									onClick={start}
 									disabled={!isSetReady(data) || starting}
-									className={`${namingButton} mt-7 min-h-20 w-full gap-3 text-2xl`}
+									className={`${namingButton} mt-7 min-h-16 w-full max-w-sm gap-3 rounded-full text-2xl`}
 								>
 									{starting ? (
 										<LoaderCircle
@@ -195,7 +207,7 @@ export function NamingTrainingSessionClient({
 									</summary>
 									<p>
 										{data.backendSetId
-											? "ชุดฝึกจากระบบ ส่งเสียงให้ตรวจเมื่อกดส่งเสียง ข้อที่ข้ามหรือไม่ส่งจะยังไม่บันทึกในแผน"
+											? "หยุดบันทึกแล้วระบบส่งเสียงตรวจและไปต่ออัตโนมัติ วงกลมสีเขียวคือทำแล้ว ข้อที่ข้ามกลับมากดทำได้ และจะบันทึกจบรอบเมื่อทำครบทุกข้อ"
 											: "ฝึกเพิ่มเติมจากคลัง ไม่ใช่ชุดที่เลือกจากผลประเมิน ไม่ส่งเสียงหรือบันทึกลงแผน ข้อมูลรอบนี้หายเมื่อออกจากหน้าหรือรีเฟรช"}
 									</p>
 								</details>
@@ -229,438 +241,420 @@ export function NamingRound({
 	schedule?: string;
 	onRepeat: () => void;
 }) {
-	const [index, setIndex] = useState(0);
-	const [hints, setHints] = useState(0);
-	const [revealed, setRevealed] = useState(false);
-	const [responses, setResponses] = useState<RoundResponse[]>([]);
-	const [submitted, setSubmitted] = useState(false);
-	const [correct, setCorrect] = useState<boolean>();
-	const [error, setError] = useState("");
+	const flow = usePracticeFlow<RoundResponse>(set.questions.length);
 	const [busy, setBusy] = useState(false);
-	const [finished, setFinished] = useState(false);
+	const [error, setError] = useState("");
 	const [completion, setCompletion] = useState<
 		"idle" | "saving" | "saved" | "failed"
 	>("idle");
-	const [imageFailed, setImageFailed] = useState(false);
-	const actionLock = useRef(false);
-	const lastSaved = useRef<{ correct?: boolean } | undefined>(undefined);
-	const lastAction = useRef(0);
-	const startedAt = useRef(0);
-	const heading = useRef<HTMLHeadingElement>(null);
-	const media = useNamingMedia(setError);
-	const question = set.questions[index];
-	const answerAudio = patientAudioManifest.namingAnswers[question.id];
-	const recording =
-		media.micState === "requesting" || media.micState === "recording";
-	const stats = summarizeRound(responses);
+	const [saveAttempt, setSaveAttempt] = useState(0);
+	const busyRef = useRef(false);
+	const alive = useRef(true);
+	const { play: playFeedback, stopAudio: stopFeedback } =
+		useNamingMedia(setError);
+	const question = set.questions[flow.index];
+	const entry = flow.entries[flow.index];
+	const canSave = Boolean(
+		sessionId &&
+			flow.finished &&
+			flow.entries.every((item) => item.response?.submitted),
+	);
 	useEffect(() => {
-		startedAt.current = Date.now();
-		heading.current?.focus();
-	}, [index, finished]);
-	function lock() {
-		if (actionLock.current || Date.now() - lastAction.current < 600)
-			return false;
-		actionLock.current = true;
-		lastAction.current = Date.now();
-		return true;
-	}
-	function hint() {
-		if (recording || hints >= 2 || revealed || !lock()) return;
-		media.stopAudio();
-		setHints((value) => value + 1);
-		const audio =
-			patientAudioManifest.namingHints[`${question.id}-${hints + 1}`];
-		if (audio) void media.play(audio);
-		actionLock.current = false;
-	}
-	async function submit() {
-		if (
-			!sessionId ||
-			!set.backendSetId ||
-			!set.questionIds ||
-			submitted ||
-			recording ||
-			!media.blob ||
-			!lock()
-		)
-			return;
+		alive.current = true;
+		return () => {
+			alive.current = false;
+		};
+	}, []);
+	useEffect(() => {
+		const source = approvedPatientAudio(flow.cue?.audioSrc);
+		if (source) void playFeedback(source, flow.continueNow);
+		return stopFeedback;
+	}, [flow.cue, flow.continueNow, playFeedback, stopFeedback]);
+	useEffect(() => {
+		if (!canSave || !sessionId) return;
+		let active = true;
+		async function save() {
+			setCompletion("saving");
+			const result = await completeNamingSession(sessionId!, schedule);
+			if (active) setCompletion(result.success ? "saved" : "failed");
+		}
+		void save();
+		return () => {
+			active = false;
+		};
+	}, [canSave, sessionId, schedule, saveAttempt]);
+	async function submit(
+		blob: Blob,
+		hints: number,
+		revealed: boolean,
+		timeMs: number,
+	) {
+		if (busyRef.current || flow.cue || entry.status === "answered") return;
+		busyRef.current = true;
 		setBusy(true);
 		setError("");
-		media.stopAudio();
 		try {
-			const result = await sendNamingResponse({
-				sessionId,
-				setId: set.backendSetId,
-				questionId: set.questionIds[index],
-				hintsUsed: revealed ? 3 : hints,
-				responseTimeMs: Date.now() - startedAt.current,
-				voiceFile: media.blob,
-			});
-			setSubmitted(true);
-			setCorrect(result.correct);
-			lastSaved.current = result;
+			const result =
+				sessionId && set.backendSetId && set.questionIds
+					? await sendNamingResponse({
+							sessionId,
+							setId: set.backendSetId,
+							questionId: set.questionIds[flow.index],
+							hintsUsed: revealed ? 3 : hints,
+							responseTimeMs: timeMs,
+							voiceFile: blob,
+						})
+					: {};
+			if (!alive.current) return;
+			flow.complete(
+				{
+					questionId: question.id,
+					skipped: false,
+					hintsUsed: revealed ? 3 : hints,
+					revealed,
+					recorded: true,
+					submitted: Boolean(sessionId),
+					correct: result.correct,
+				},
+				result.correct,
+			);
 		} catch {
-			setError("ส่งเสียงไม่ได้ แตะส่งเสียงเพื่อลองใหม่");
+			if (alive.current) setError("ส่งเสียงไม่ได้ กรุณาลองอีกครั้ง");
 		} finally {
-			setBusy(false);
-			actionLock.current = false;
+			busyRef.current = false;
+			if (alive.current) setBusy(false);
 		}
 	}
-	function next(skipped: boolean) {
-		if (busy || recording || (imageFailed && !skipped) || !lock()) return;
-		if (
-			!skipped &&
-			!revealed &&
-			!submitted &&
-			(!media.blob || Boolean(sessionId))
-		) {
-			actionLock.current = false;
-			return;
-		}
-		const response: RoundResponse = {
-			questionId: question.id,
-			skipped,
-			hintsUsed: revealed ? 3 : hints,
-			revealed,
-			recorded: Boolean(media.blob),
-			submitted: Boolean(lastSaved.current),
-			correct: lastSaved.current?.correct,
-		};
-		setResponses((previous) => [...previous, response]);
-		media.reset();
-		setHints(0);
-		setRevealed(false);
-		setSubmitted(false);
-		setCorrect(undefined);
-		setError("");
-		setImageFailed(false);
-		lastSaved.current = undefined;
-		if (index === set.questions.length - 1) setFinished(true);
-		else setIndex((value) => value + 1);
-		actionLock.current = false;
-	}
-	async function finishOnServer() {
-		if (!sessionId || stats.submitted !== set.questions.length || !lock())
-			return;
-		setCompletion("saving");
-		setError("");
-		try {
-			const result = await completeNamingSession(sessionId, schedule);
-			if (!result.success) throw new Error(result.errorMessage);
-			setCompletion("saved");
-		} catch {
-			setCompletion("failed");
-			setError("ยังบันทึกไม่ได้ กรุณาลองอีกครั้ง");
-		} finally {
-			actionLock.current = false;
-		}
-	}
-	if (finished)
+	if (flow.finished)
 		return (
 			<main className={namingPage}>
 				<section className="mx-auto max-w-2xl rounded-3xl bg-white p-6 text-center sm:p-10">
-					<Check
-						aria-hidden="true"
-						className="mx-auto h-24 w-24 rounded-full bg-[#e0f5eb] p-4 text-[#118a82]"
-					/>
-					<h1
-						ref={heading}
-						tabIndex={-1}
-						className="mt-5 text-3xl font-bold outline-none"
-					>
-						ฝึกจบแล้ว
-					</h1>
-					<p className="mt-3 text-xl">
-						{stats.completed} / {set.questions.length} ข้อ
-					</p>
-					<div className="my-6 grid grid-cols-2 gap-4">
-						<p className="rounded-2xl bg-[#edf9f6] p-5 text-xl">
-							ตอบแล้ว
-							<br />
-							<strong className="text-3xl">{stats.answered}</strong>
-						</p>
-						<p className="rounded-2xl bg-[#edf9f6] p-5 text-xl">
-							ข้าม
-							<br />
-							<strong className="text-3xl">{stats.skipped}</strong>
-						</p>
+					<div aria-hidden="true" className="text-8xl">
+						🌈
 					</div>
-					<p className="text-lg text-[#526a66]">
-						{stats.evaluated
-							? `ผลตรวจ ${stats.evaluated} ข้อ · ถูก ${stats.correct} ข้อ`
-							: "ยังไม่มีผลตรวจการพูด"}
-					</p>
-					{sessionId && stats.submitted === set.questions.length && (
-						<button
-							disabled={completion === "saving" || completion === "saved"}
-							onClick={finishOnServer}
-							className={`${namingButton} mt-5 w-full gap-3`}
-						>
-							<Check aria-hidden="true" />
-							{completion === "saved"
+					<h1 className="mt-6 text-3xl font-bold">ทำครบแล้ว เก่งมากค่ะ</h1>
+					<p className="mt-4 text-xl">ขอบคุณที่ตั้งใจฝึก</p>
+					<p role="status" className="mt-4 text-lg text-[#526a66]">
+						{completion === "saving"
+							? "กำลังบันทึก…"
+							: completion === "saved"
 								? "บันทึกแล้ว"
-								: completion === "saving"
-									? "กำลังบันทึก…"
-									: "บันทึกจบรอบ"}
+								: completion === "failed"
+									? "ยังบันทึกไม่ได้"
+									: "จบการฝึกรอบนี้แล้ว"}
+					</p>
+					{completion === "failed" && (
+						<button
+							onClick={() => setSaveAttempt((value) => value + 1)}
+							className={`${namingSecondary} mt-4`}
+						>
+							ลองบันทึกใหม่
 						</button>
 					)}
-					{error && (
-						<p role="alert" className="mt-4 text-lg text-red-800">
-							{error}
-						</p>
-					)}
-					<div className="mt-6 grid gap-4 sm:grid-cols-2">
-						<button onClick={onRepeat} className={`${namingSecondary} gap-3`}>
+					<div className="mt-7 grid gap-4 sm:grid-cols-2">
+						<button
+							onClick={onRepeat}
+							disabled={completion === "saving"}
+							className={`${namingSecondary} gap-2`}
+						>
 							<RotateCcw aria-hidden="true" />
 							ฝึกซ้ำ
 						</button>
-						<Link href={homeHref} className={`${namingButton} gap-3`}>
+						<Link href={homeHref} className={`${namingButton} gap-2`}>
 							<ArrowRight aria-hidden="true" />
 							กลับหน้าหลัก
 						</Link>
 					</div>
-					<details className="mt-6 text-left text-base leading-7 text-[#526a66]">
-						<summary className="cursor-pointer py-3">ผลรอบนี้สำหรับผู้ดูแล</summary>
-						<p>
-							{set.category} · ชุด {set.number} · ใช้คำใบ้ {stats.hinted} ข้อ ·
-							ดูเฉลย {stats.revealed} ข้อ
-						</p>
-						<p>
-							{sessionId
-								? `ส่งคำตอบสำเร็จ ${stats.submitted}/${set.questions.length} ข้อ${stats.submitted < set.questions.length ? " · ยังไม่ยืนยันการจบแผนในระบบ" : ""}`
-								: "รอบนี้ไม่ได้บันทึกลงแผนฝึก"}
-						</p>
-						<ol className="mt-3 space-y-2">
-							{responses.map((response, i) => (
-								<li key={response.questionId}>
-									{i + 1}. {set.questions[i].answer} —{" "}
-									{response.skipped
-										? "ข้าม"
-										: response.recorded
-											? "ตอบแล้ว"
-											: "ดูเฉลย"}
-									{response.correct === true
-										? " · ระบบตรวจว่าถูก"
-										: response.correct === false
-											? " · ระบบตรวจว่ายังไม่ถูก"
-											: " · ยังไม่มีผลตรวจ"}
-								</li>
-							))}
-						</ol>
-					</details>
 				</section>
 			</main>
 		);
-	const readyToSend = Boolean(sessionId && media.blob && !submitted);
-	const micLabel = busy
-		? "กำลังส่ง…"
-		: media.micState === "requesting"
-			? "รอไมโครโฟน…"
-			: media.micState === "recording"
-				? "หยุด"
-				: submitted
-					? "ส่งแล้ว"
-					: readyToSend
-						? "ส่งเสียง"
-						: media.blob
-							? "พูดอีกครั้ง"
-							: "แตะเพื่อพูด";
 	return (
-		<main className="min-h-dvh bg-[#edf9f6] p-3 text-[#173d3f] sm:p-6">
-			<section className="mx-auto flex min-h-[calc(100dvh-1.5rem)] max-w-4xl flex-col rounded-3xl bg-white px-4 py-4 shadow-sm sm:px-8 sm:py-6">
-				<header className="flex items-center justify-between gap-3">
-					<Link
-						href={homeHref}
-						aria-label="ออกจากแบบฝึกกลับหน้าหลัก"
-						className={`${namingSecondary} gap-2`}
-					>
-						<ArrowLeft aria-hidden="true" className="h-6 w-6" />
+		<main className={practicePage}>
+			<section className={practiceScene}>
+				<header className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 pb-2">
+					<Link href={homeHref} className={`${practiceQuietButton} justify-self-start`}>
+						<ArrowLeft aria-hidden="true" />
 						กลับ
 					</Link>
-					<p aria-live="polite" className="text-xl font-bold">
-						ข้อ {index + 1} จาก {set.questions.length}
-					</p>
-					<button
-						onClick={() => void media.play(NAMING_PROMPT_AUDIO)}
-						disabled={recording || busy}
-						aria-label="ฟังโจทย์"
-						className={namingSecondary}
+					<p
+						aria-live="polite"
+						className="text-lg font-semibold tabular-nums text-[#436c65] sm:text-xl"
 					>
-						<Volume2 aria-hidden="true" className="h-7 w-7" />
-						<span className="sr-only">ฟังโจทย์</span>
-					</button>
+						ข้อ {flow.index + 1} จาก {set.questions.length}
+					</p>
+					<QuestionDots
+						statuses={flow.entries.map((item) => item.status)}
+						current={flow.index}
+						disabled={busy || Boolean(flow.cue)}
+						onSelect={(index) => {
+							if (busyRef.current) return;
+							setError("");
+							flow.goTo(index);
+						}}
+					/>
 				</header>
-				<progress
-					aria-label="ความคืบหน้าการฝึก"
-					max={set.questions.length}
-					value={responses.length}
-					className="my-3 h-2 w-full accent-[#118a82]"
+				<NamingQuestion
+					key={`${flow.index}-${flow.revision}`}
+					question={question}
+					order={flow.index + 1}
+					locked={busy || Boolean(flow.cue) || entry.status === "answered"}
+					answered={entry.status === "answered"}
+					busy={busy}
+					onSubmit={submit}
 				/>
+				{error && (
+					<p
+						role="alert"
+						className="my-3 rounded-2xl bg-amber-50 p-4 text-center text-lg text-amber-900"
+					>
+						{error}
+					</p>
+				)}
+				<footer className="flex flex-wrap items-center justify-between gap-3 py-2 text-[#638078]">
+					<p className="text-sm text-[#829990]">เหลือ {flow.remaining} ข้อ</p>
+					<button
+						type="button"
+						onClick={() => {
+							if (busyRef.current) return;
+							setError("");
+							flow.skip();
+						}}
+						disabled={busy || Boolean(flow.cue)}
+						className={practiceQuietButton}
+					>
+						{entry.status === "answered" ? (
+							<>
+								<ArrowRight aria-hidden="true" />
+								ถัดไป
+							</>
+						) : (
+							<>
+								<SkipForward aria-hidden="true" />
+								ข้าม
+							</>
+						)}
+					</button>
+				</footer>
+				<PracticeFeedback cue={flow.cue} onContinue={flow.continueNow} />
+			</section>
+		</main>
+	);
+}
+
+function NamingQuestion({
+	question,
+	order,
+	locked,
+	answered,
+	busy,
+	onSubmit,
+}: {
+	question: CatalogQuestion;
+	order: number;
+	locked: boolean;
+	answered: boolean;
+	busy: boolean;
+	onSubmit: (
+		blob: Blob,
+		hints: number,
+		revealed: boolean,
+		timeMs: number,
+	) => Promise<void>;
+}) {
+	const [hints, setHints] = useState(0);
+	const [revealed, setRevealed] = useState(false);
+	const [error, setError] = useState("");
+	const [imageFailed, setImageFailed] = useState(false);
+	const media = useNamingMedia(setError);
+	const { stopAudio } = media;
+	useEffect(() => {
+		if (locked) stopAudio();
+	}, [locked, stopAudio]);
+	const sentBlob = useRef<Blob | undefined>(undefined);
+	const startedAt = useRef(0);
+	const heading = useRef<HTMLHeadingElement>(null);
+	const recording =
+		media.micState === "recording" || media.micState === "requesting";
+	const submitBlob = useCallback(
+		(blob: Blob) =>
+			onSubmit(
+				blob,
+				hints,
+				revealed,
+				Math.max(0, Date.now() - startedAt.current),
+			),
+		[onSubmit, hints, revealed],
+	);
+	useEffect(() => {
+		startedAt.current = Date.now();
+		heading.current?.focus();
+	}, []);
+	useEffect(() => {
+		if (media.blob && sentBlob.current !== media.blob && !locked) {
+			sentBlob.current = media.blob;
+			void submitBlob(media.blob);
+		}
+	}, [media.blob, locked, submitBlob]);
+	const micLabel = busy
+		? "กำลังส่ง…"
+		: media.micState === "recording"
+			? "หยุด"
+			: media.micState === "requesting"
+				? "รอไมโครโฟน…"
+				: media.blob
+					? "ส่งเสียงอีกครั้ง"
+					: "แตะเพื่อพูด";
+	return (
+		<div className="grid flex-1 items-center gap-5 py-3 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.75fr)] lg:gap-10 lg:py-2">
+			<div className="flex min-w-0 flex-col items-center justify-center gap-2">
 				<h1
 					ref={heading}
 					tabIndex={-1}
-					className="mb-3 text-center text-2xl font-bold outline-none sm:text-3xl"
+					className="text-center text-3xl font-semibold leading-snug text-[#31584f] outline-none sm:text-4xl"
 				>
 					ภาพนี้คืออะไร
 				</h1>
-				<div className="flex flex-1 flex-col items-center justify-center gap-4">
-					<TrainingImageFrame
-						key={question.id}
-						size="naming"
-						alt={`ภาพโจทย์ข้อ ${index + 1}`}
-						imageSrc={question.imageSrc}
-						onImageError={() => setImageFailed(true)}
-					/>
-					{imageFailed && (
-						<p role="alert" className="text-lg text-red-800">
-							ภาพไม่ขึ้น กรุณาข้ามข้อนี้
-						</p>
-					)}
-					<button
-						disabled={
-							busy ||
-							submitted ||
-							media.micState === "requesting" ||
-							imageFailed
-						}
-						onClick={() => {
-							setError("");
-							if (readyToSend) void submit();
-							else void media.toggleRecording();
-						}}
-						aria-label={micLabel}
-						aria-pressed={media.micState === "recording"}
-						className={`flex h-36 w-36 shrink-0 flex-col items-center justify-center gap-2 rounded-full text-white shadow-lg outline-none transition focus-visible:ring-4 focus-visible:ring-teal-300 focus-visible:ring-offset-4 disabled:opacity-60 sm:h-44 sm:w-44 ${recording ? "bg-red-700 hover:bg-red-800" : "bg-[#118a82] hover:bg-[#0c706a]"}`}
-					>
-						{busy || media.micState === "requesting" ? (
-							<LoaderCircle
-								aria-hidden="true"
-								className="h-16 w-16 animate-spin"
-							/>
-						) : media.micState === "recording" ? (
-							<Square
-								aria-hidden="true"
-								className="h-16 w-16"
-								fill="currentColor"
-							/>
-						) : submitted ? (
-							<Check aria-hidden="true" className="h-16 w-16" />
-						) : readyToSend ? (
-							<Send aria-hidden="true" className="h-16 w-16" />
-						) : (
-							<Mic aria-hidden="true" className="h-16 w-16 sm:h-20 sm:w-20" />
-						)}
-						<span className="text-xl font-bold">{micLabel}</span>
-					</button>
-					<p
-						role="status"
-						className="min-h-7 text-center text-lg font-semibold text-[#176e66]"
-					>
-						{media.micState === "recording"
-							? "กำลังบันทึกเสียง"
-							: submitted
-								? correct === true
-									? "ถูกต้อง"
-									: correct === false
-										? "ลองอีกครั้งได้นะ"
-										: "ส่งเสียงแล้ว"
-								: media.blob
-									? "บันทึกเสียงแล้ว"
-									: ""}
+				<TrainingImageFrame
+					size="naming"
+					alt={`ภาพโจทย์ข้อ ${order}`}
+					imageSrc={question.imageSrc}
+					onImageError={() => setImageFailed(true)}
+				/>
+			</div>
+			<div className="flex min-w-0 flex-col items-center justify-center gap-5 lg:gap-7">
+				{answered ? (
+					<p className="flex min-h-36 items-center gap-3 text-2xl font-semibold text-[#118a82]">
+						<Check aria-hidden="true" className="h-12 w-12" />
+						ทำข้อนี้แล้ว
 					</p>
-					{submitted && correct === false && (
+				) : (
+					<>
 						<button
+							type="button"
+							disabled={
+								locked || media.micState === "requesting" || imageFailed
+							}
+							aria-label={micLabel}
+							aria-pressed={media.micState === "recording"}
 							onClick={() => {
-								media.reset();
-								setSubmitted(false);
-								setCorrect(undefined);
 								setError("");
+								media.stopAudio();
+								if (media.blob) void submitBlob(media.blob);
+								else void media.toggleRecording();
 							}}
-							className={`${namingSecondary} gap-2`}
+							className={`${practiceMic} ${recording ? "bg-[linear-gradient(150deg,#6fbed1,#286e8d)]" : "bg-[linear-gradient(150deg,#5acdb4,#168a7b_75%)]"}`}
 						>
-							<RotateCcw aria-hidden="true" />
-							ลองอีกครั้ง
+							{busy || media.micState === "requesting" ? (
+								<LoaderCircle
+									aria-hidden="true"
+									className="h-16 w-16 animate-spin"
+								/>
+							) : media.micState === "recording" ? (
+								<Square
+									aria-hidden="true"
+									className="h-16 w-16"
+									fill="currentColor"
+								/>
+							) : (
+								<Mic
+									aria-hidden="true"
+									className="h-20 w-20"
+									strokeWidth={1.7}
+								/>
+							)}
+						</button>
+						<p
+							role="status"
+							className="text-center text-xl font-semibold text-[#31786e]"
+						>
+							{micLabel}
+						</p>
+					</>
+				)}
+				<div className="flex flex-wrap items-center justify-center gap-3">
+					<button
+						type="button"
+						disabled={locked || recording}
+						onClick={() => void media.play(NAMING_PROMPT_AUDIO)}
+						className={practiceAction}
+					>
+						<Volume2 aria-hidden="true" className="h-5 w-5" />
+						ฟังโจทย์
+					</button>
+					{!answered && (
+						<button
+							type="button"
+							disabled={locked || recording || revealed}
+							onClick={() => {
+								media.stopAudio();
+								if (hints < 2) {
+									const next = hints + 1;
+									setHints(next);
+									const audio =
+										patientAudioManifest.namingHints[`${question.id}-${next}`];
+									if (audio) void media.play(audio);
+								} else setRevealed(true);
+							}}
+							className={practiceAction}
+						>
+							<Lightbulb aria-hidden="true" className="h-5 w-5" />
+							{hints < 2 ? "คำใบ้" : "เฉลย"}
 						</button>
 					)}
+					{media.blob && !locked && (
+						<button
+							type="button"
+							onClick={() => void media.toggleRecording()}
+							className={practiceQuietButton}
+						>
+							พูดใหม่
+						</button>
+					)}
+				</div>
+				{!answered && (
 					<div
+						role="status"
 						aria-live="polite"
-						aria-atomic="true"
-						className="w-full max-w-lg text-center"
+						className="max-w-sm text-center"
 					>
 						{revealed ? (
-							<div className="rounded-2xl bg-[#e3f5ed] p-4">
-								<p className="text-3xl font-bold text-[#118a82]">
+							<>
+								<p className="text-3xl font-semibold text-[#118a82]">
 									{question.answer}
 								</p>
-								{answerAudio && (
+								{patientAudioManifest.namingAnswers[question.id] && (
 									<button
-										onClick={() => void media.play(answerAudio)}
-										disabled={recording || busy}
-										className={`${namingSecondary} mt-3 gap-2`}
+										onClick={() =>
+											void media.play(
+												patientAudioManifest.namingAnswers[question.id],
+											)
+										}
+										disabled={locked || recording}
+										className={`${practiceAction} mt-3`}
 									>
 										<Volume2 aria-hidden="true" />
 										ฟังเฉลย
 									</button>
 								)}
-							</div>
+							</>
 						) : hints > 0 ? (
-							<p className="rounded-2xl bg-[#f0f9f5] p-4 text-xl leading-8">
+							<p className="text-xl leading-8 text-[#526f65]">
 								{hints === 1 ? question.featureHint : question.initialHint}
 							</p>
 						) : null}
 					</div>
-				</div>
+				)}
+				{imageFailed && (
+					<p role="alert" className="text-lg text-amber-900">
+						ภาพยังไม่ขึ้น กรุณาข้ามไว้ก่อน
+					</p>
+				)}
 				{error && (
-					<p
-						role="alert"
-						className="mt-3 rounded-xl bg-red-50 p-3 text-center text-lg text-red-800"
-					>
+					<p role="alert" className="text-lg text-amber-900">
 						{error}
 					</p>
 				)}
-				<footer className="mt-4 border-t border-[#d7e9e4] pt-4">
-					<div className="grid grid-cols-2 gap-3">
-						<button
-							onClick={() => {
-								if (hints < 2) hint();
-								else {
-									if (!lock()) return;
-									media.stopAudio();
-									setRevealed(true);
-									actionLock.current = false;
-								}
-							}}
-							disabled={recording || busy || revealed || imageFailed}
-							aria-label={hints < 2 ? `คำใบ้ ${hints + 1} จาก 2` : "เปิดเฉลย"}
-							className={`${namingSecondary} gap-2`}
-						>
-							<Lightbulb aria-hidden="true" className="h-7 w-7" />
-							{hints < 2 ? "คำใบ้" : "เฉลย"}
-						</button>
-						<button
-							onClick={() => next(false)}
-							disabled={
-								busy ||
-								recording ||
-								imageFailed ||
-								(!revealed && !submitted && (!media.blob || Boolean(sessionId)))
-							}
-							className={`${namingButton} gap-2`}
-						>
-							{index === set.questions.length - 1 ? "เสร็จแล้ว" : "ถัดไป"}
-							<ArrowRight aria-hidden="true" className="h-7 w-7" />
-						</button>
-					</div>
-					<button
-						onClick={() => next(true)}
-						disabled={busy || recording}
-						className="mx-auto mt-2 flex min-h-14 items-center justify-center gap-2 rounded-xl px-6 text-lg font-semibold text-[#426c63] focus-visible:outline-4 focus-visible:outline-teal-700 disabled:opacity-50"
-					>
-						<SkipForward aria-hidden="true" className="h-6 w-6" />
-						ข้าม
-					</button>
-				</footer>
-			</section>
-		</main>
+			</div>
+		</div>
 	);
 }

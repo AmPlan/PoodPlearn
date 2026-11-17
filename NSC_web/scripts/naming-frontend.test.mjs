@@ -73,14 +73,22 @@ test("all declared images and WAV files exist and have valid signatures", () => 
 		assert(bytes.length > 100, url);
 	}
 });
-test("missing towel blocks medium set 3; swapped animal folders map correctly", () => {
-	assert.equal(catalog.namingCatalog.filter(catalog.isSetReady).length, 8);
+test("owner-supplied towel completes all nine image sets; swapped animal folders map correctly", () => {
+	assert.equal(catalog.namingCatalog.filter(catalog.isSetReady).length, 9);
 	assert.equal(
 		catalog
 			.missingImages(catalog.findCatalogSet("medium-3"))
 			.map((q) => q.answer)
 			.join(","),
-		"ผ้าเช็ดตัว",
+		"",
+	);
+	assert.equal(
+		catalog.findCatalogSet("medium-3").questions[0].imageSrc,
+		"/training_images/equipments/set3/towel.png",
+	);
+	assert.equal(
+		catalog.findCatalogSet("medium-3").questions[0].answerAudioSrc,
+		undefined,
 	);
 	assert.equal(
 		catalog.findCatalogSet("easy-1").questions[0].imageSrc,
@@ -173,6 +181,9 @@ function hooks() {
 					},
 				];
 			},
+			useId() {
+				return `test-id-${cursor++}`;
+			},
 			useRef(initial) {
 				const i = cursor++;
 				if (!(i in slots)) slots[i] = { current: initial };
@@ -201,105 +212,6 @@ function textOf(node) {
 		.filter((item) => typeof item === "string" || typeof item === "number")
 		.join("");
 }
-test("first/last question, hints, reveal, rapid next/skip, reset, summary and repeat controls", () => {
-	const h = hooks();
-	let now = 1000;
-	let resets = 0;
-	let repeated = false;
-	const media = {
-		micState: "idle",
-		reset() {
-			resets++;
-		},
-		stopAudio() {},
-		play() {},
-		toggleRecording() {},
-	};
-	const api = load("src/features/training/services/namingFrontendService.ts", {
-		"../data/namingCatalog": catalog,
-		"./pn002NamingService": {},
-	});
-	const ui = load(
-		"src/features/training/components/NamingTrainingSessionClient.tsx",
-		{
-			"react/jsx-runtime": jsxRuntime,
-			"lucide-react": icons,
-			react: h.react,
-			"next/link": { default: "a" },
-			"@/features/auth/services/authSession": {},
-			"../data/namingCatalog": catalog,
-			"../hooks/useNamingMedia": { useNamingMedia: () => media },
-			"../data/patientAudioManifest": {
-				patientAudioManifest: { namingAnswers: {}, namingHints: {} },
-			},
-			"../services/namingFrontendService": api,
-			"../services/pn002NamingService": {},
-			"./NamingLibrary": {},
-			"./TrainingImageFrame": { TrainingImageFrame: "image" },
-		},
-		{
-			Date: class extends Date {
-				static now() {
-					return now;
-				}
-			},
-		},
-	);
-	function render() {
-		h.reset();
-		return ui.NamingRound({
-			set: catalog.namingCatalog[0],
-			onRepeat: () => {
-				repeated = true;
-			},
-		});
-	}
-	let tree = render();
-	function button(label) {
-		const result = flatten(tree).find(
-			(n) => n.type === "button" && textOf(n) === label,
-		);
-		assert(result, label);
-		return result;
-	}
-	function click(label) {
-		now += 1000;
-		const b = button(label);
-		assert(!b.props.disabled, label);
-		b.props.onClick();
-		tree = render();
-	}
-	assert(textOf(tree).includes("ข้อ 1 จาก 15"));
-	assert(!flatten(tree).some((n) => typeof n === "string" && n === "หมา"));
-	assert(
-		!flatten(tree).some((n) => n.type === "input" || n.type === "textarea"),
-	);
-	assert(!/ง่าย|ปานกลาง|ยาก/.test(textOf(tree)));
-	assert(button("ถัดไป").props.disabled);
-	click("คำใบ้");
-	click("คำใบ้");
-	click("เฉลย");
-	assert(textOf(tree).includes("หมา"));
-	assert(!button("ถัดไป").props.disabled);
-	now += 1000;
-	const next = button("ถัดไป").props.onClick;
-	next();
-	next();
-	tree = render();
-	assert(textOf(tree).includes("ข้อ 2 จาก 15"));
-	assert(button("ถัดไป").props.disabled);
-	assert(button("คำใบ้"));
-	for (let i = 2; i <= 14; i++) click("ข้าม");
-	assert(textOf(tree).includes("ข้อ 15 จาก 15"));
-	click("ข้าม");
-	assert(textOf(tree).includes("15 / 15 ข้อ"));
-	assert(textOf(tree).includes("ยังไม่มีผลตรวจการพูด"));
-	assert.equal(resets, 15);
-	click("ฝึกซ้ำ");
-	assert(repeated);
-	assert(flatten(tree).some((n) => n.props?.href === "/patient/home"));
-});
-
 test("late microphone permission after unmount stops the stream; audio pauses on exit", async () => {
 	const h = hooks();
 	let resolvePermission;
@@ -496,7 +408,7 @@ test("patient labels hide difficulty; catalog view contains categories and readi
 		flatten(tree).filter(
 			(node) => node.type === "button" && node.props.disabled,
 		).length,
-		1,
+		0,
 	);
 });
 
@@ -662,4 +574,444 @@ test("only owner-confirmed prerecorded audio is activated", () => {
 		Object.keys(audio.patientAudioManifest.assessmentQuestions).length,
 		0,
 	);
+});
+
+function practiceHarness(total) {
+	const h = hooks();
+	let now = 1000;
+	let nextId = 0;
+	const timers = new Map();
+	const flowData = load("src/features/training/services/practiceFlow.ts");
+	const api = load(
+		"src/features/training/hooks/usePracticeFlow.ts",
+		{
+			react: h.react,
+			"../services/practiceFlow": flowData,
+			"../data/patientAudioManifest": {
+				patientAudioManifest: {
+					feedback: {},
+					milestones: {},
+					remainingQuestions: {},
+				},
+			},
+		},
+		{
+			setTimeout: (callback) => {
+				const id = ++nextId;
+				timers.set(id, callback);
+				return id;
+			},
+			clearTimeout: (id) => timers.delete(id),
+			Date: class extends Date {
+				static now() {
+					return now;
+				}
+			},
+		},
+	);
+	const render = () => {
+		h.reset();
+		return api.usePracticeFlow(total);
+	};
+	return {
+		render,
+		tick() {
+			now += 1000;
+		},
+		fire() {
+			const [id, callback] = timers.entries().next().value ?? [];
+			assert(callback, "a transition timer must exist");
+			timers.delete(id);
+			callback();
+		},
+		unmount() {
+			h.unmount();
+		},
+		timerCount() {
+			return timers.size;
+		},
+	};
+}
+
+test("skipped dots stay incomplete, revisit works, and no summary before all answers", () => {
+	const h = practiceHarness(3);
+	let flow = h.render();
+	h.tick();
+	flow.skip();
+	flow = h.render();
+	assert.equal(flow.index, 1);
+	assert.equal(flow.entries[0].status, "skipped");
+	assert.equal(flow.answered, 0);
+	assert.equal(flow.complete({ id: 2 }, false), true);
+	assert.equal(flow.complete({ id: 2 }, false), false);
+	flow = h.render();
+	assert.equal(flow.cue.kind, "wrong");
+	assert.equal(flow.entries[1].status, "answered");
+	h.fire();
+	flow = h.render();
+	assert.equal(flow.index, 2);
+	h.tick();
+	flow.skip();
+	flow = h.render();
+	assert.equal(flow.cue.kind, "remaining");
+	assert.deepEqual(Array.from(flow.cue.remainingQuestions), [1, 3]);
+	h.fire();
+	flow = h.render();
+	assert.equal(flow.index, 0);
+	assert.equal(flow.finished, false);
+	h.tick();
+	flow.goTo(1);
+	flow = h.render();
+	assert.equal(flow.entries[1].status, "answered");
+	assert.equal(flow.complete({}, true), false);
+	h.tick();
+	flow.goTo(0);
+	flow = h.render();
+	flow.complete({ id: 1 });
+	h.fire();
+	flow = h.render();
+	assert.equal(flow.index, 2);
+	flow.complete({ id: 3 }, true);
+	h.fire();
+	flow = h.render();
+	assert.equal(flow.finished, true);
+	assert.equal(flow.answered, 3);
+	assert.equal(flow.remaining, 0);
+});
+
+test("30-question round reminds only 8 and 15, automatically returns, and finishes only when both answered", () => {
+	const h = practiceHarness(30);
+	const drain = () => {
+		while (h.render().cue) h.fire();
+	};
+	for (let i = 0; i < 30; i++) {
+		const flow = h.render();
+		assert.equal(flow.index, i);
+		h.tick();
+		if (i === 7 || i === 14) flow.skip();
+		else {
+			flow.complete({ id: i });
+			if (i !== 29) drain();
+		}
+	}
+	h.fire();
+	let flow = h.render();
+	assert.equal(flow.cue.kind, "remaining");
+	assert.deepEqual(Array.from(flow.cue.remainingQuestions), [8, 15]);
+	assert.equal(flow.finished, false);
+	flow.skip(); // Duplicate clicks cannot navigate behind the reminder.
+	assert.equal(h.render().index, 29);
+	h.fire(); // No click required to return to question 8.
+	assert.equal(h.render().index, 7);
+	h.tick();
+	h.render().skip();
+	assert.equal(h.render().index, 14);
+	h.render().complete({ id: 14 });
+	h.fire();
+	flow = h.render();
+	assert.deepEqual(Array.from(flow.cue.remainingQuestions), [8]);
+	flow.continueNow();
+	flow.continueNow(); // Manual continuation is safe to repeat.
+	assert.equal(h.render().index, 7);
+	h.render().complete({ id: 7 });
+	drain();
+	assert.equal(h.render().finished, true);
+	assert.equal(h.render().answered, 30);
+	assert.equal(h.timerCount(), 0);
+});
+
+test("every five unique answers gets encouragement, without counting skips or duplicating records", () => {
+	const h = practiceHarness(15);
+	let flow = h.render();
+	const milestones = [];
+	for (let i = 1; i <= 15; i++) {
+		assert.equal(flow.complete({ id: i }), true);
+		assert.equal(flow.complete({ id: i }), false);
+		flow = h.render();
+		assert.equal(flow.cue.kind, "received");
+		h.fire();
+		flow = h.render();
+		if (i % 5 === 0) {
+			assert.equal(flow.cue.kind, "milestone");
+			assert(flow.cue.text.includes(String(i)));
+			milestones.push(i);
+			h.fire();
+			flow = h.render();
+		}
+	}
+	assert.equal(milestones.join(","), "5,10,15");
+	assert.equal(flow.finished, true);
+	assert.equal(flow.entries.length, 15);
+	assert(flow.entries.every((e) => e.status === "answered"));
+});
+
+test("manual Continue respects milestone phase; unmount clears pending auto advance", () => {
+	const h = practiceHarness(5);
+	let flow = h.render();
+	for (let i = 1; i <= 5; i++) {
+		flow.complete({ id: i });
+		flow = h.render();
+		flow.continueNow();
+		flow = h.render();
+	}
+	assert.equal(flow.cue.kind, "milestone");
+	assert.equal(flow.finished, false);
+	assert.equal(h.timerCount(), 1);
+	h.unmount();
+	assert.equal(h.timerCount(), 0);
+});
+
+test("encouragement avoids immediate repeats and early almost-finished messages", () => {
+	const data = load("src/features/training/services/practiceFlow.ts");
+	const first = data.chooseEncouragement(5, 30, undefined, () => 0);
+	const next = data.chooseEncouragement(10, 30, first.id, () => 0);
+	assert.notEqual(first.id, next.id);
+	assert(!first.text.includes("อีกนิด"));
+	assert(first.text.includes("5"));
+	const last = data.chooseEncouragement(25, 30, undefined, () => 0.999);
+	assert.equal(last.id, "almost");
+});
+
+test("wrong feedback is supportive, contains no answer or red style", () => {
+	const api = load("src/features/training/components/PracticeFeedback.tsx", {
+		"react/jsx-runtime": jsxRuntime,
+	});
+	const tree = api.PracticeFeedback({
+		cue: { kind: "wrong", text: "ไม่เป็นไร ไปต่อกันนะคะ" },
+		onContinue() {},
+	});
+	assert(textOf(tree).includes("ไม่เป็นไร"));
+	assert(!/ยังไม่ถูก|ผิด|คะแนน/.test(textOf(tree)));
+	assert(
+		!flatten(tree).some((n) =>
+			/red-|rose-|#F97066|#B42318/.test(n.props?.className ?? ""),
+		),
+	);
+});
+
+test("question dots expose numbered statuses and navigation without a progress bar", () => {
+	const h = hooks();
+	let selected;
+	const api = load("src/features/training/components/QuestionDots.tsx", {
+		"react/jsx-runtime": jsxRuntime,
+		react: h.react,
+		"lucide-react": icons,
+	});
+	const props = {
+		statuses: ["answered", "skipped", "pending"],
+		current: 1,
+		onSelect(i) {
+			selected = i;
+		},
+	};
+	const render = () => {
+		h.reset();
+		return api.QuestionDots(props);
+	};
+	let tree = render();
+	let trigger = flatten(tree).find(
+		(n) => n.props?.["aria-haspopup"] === "dialog",
+	);
+	assert.equal(trigger.props["aria-expanded"], false);
+	assert.equal(
+		flatten(tree).find((n) => n.type === "dialog").props.open,
+		undefined,
+	);
+	trigger.props.onClick();
+	tree = render();
+	trigger = flatten(tree).find((n) => n.props?.["aria-haspopup"] === "dialog");
+	assert.equal(trigger.props["aria-expanded"], true);
+	const buttons = flatten(tree).filter(
+		(n) => n.type === "button" && n.props["aria-label"]?.startsWith("ข้อ "),
+	);
+	assert.equal(buttons.length, 3);
+	assert(buttons[0].props["aria-label"].includes("ทำแล้ว"));
+	assert(buttons[1].props["aria-label"].includes("ข้ามไว้"));
+	buttons[1].props.onClick();
+	assert.equal(selected, 1);
+	assert.equal(
+		flatten(render()).find((n) => n.props?.["aria-haspopup"] === "dialog")
+			.props["aria-expanded"],
+		false,
+	);
+	assert.equal(buttons[1].props["aria-current"], "step");
+	assert(!flatten(tree).some((n) => n.type === "progress"));
+});
+
+test("Repetition shows its actual sentence; recording submits a blob once without typing", () => {
+	function setup(blob) {
+		const h = hooks();
+		const sent = [];
+		const api = load(
+			"src/features/assessment/components/AssessmentSessionClient.tsx",
+			{
+				"react/jsx-runtime": jsxRuntime,
+				react: h.react,
+				"next/link": { default: "a" },
+				"next/navigation": {},
+				"lucide-react": icons,
+				"@/features/training/hooks/useNamingMedia": {
+					useNamingMedia: () => ({
+						blob,
+						micState: blob ? "recorded" : "idle",
+						play() {},
+						stopAudio() {},
+						toggleRecording() {},
+					}),
+				},
+				"@/features/training/hooks/usePracticeFlow": {},
+				"@/features/training/components/QuestionDots": {},
+				"@/features/training/components/practiceStyles": {},
+				"@/features/training/components/PracticeFeedback": {},
+				"@/features/training/components/TrainingImageFrame": {
+					TrainingImageFrame: "image",
+				},
+				"@/features/training/components/NamingLibrary": {},
+				"@/features/training/data/patientAudioManifest": {
+					approvedPatientAudio: () => undefined,
+				},
+				"../services/standardAssessmentService": {},
+			},
+		);
+		const props = {
+			question: {
+				id: "q20",
+				order: 20,
+				interactionType: "repeat_after",
+				promptText: "รถติดบนถนน",
+			},
+			locked: false,
+			answered: false,
+			busy: false,
+			onSubmit: async (answer) => sent.push(answer),
+		};
+		return {
+			render() {
+				h.reset();
+				return api.AssessmentQuestion(props);
+			},
+			sent,
+			props,
+		};
+	}
+	const missing = setup();
+	const tree = missing.render();
+	assert(textOf(tree).includes("รถติดบนถนน"));
+	assert(textOf(tree).includes("ยังไม่มีเสียงโจทย์"));
+	assert(
+		flatten(tree)
+			.filter((n) => n.type === "button")
+			.some((n) => n.props.disabled && n.props["aria-label"] === "รอเสียงโจทย์"),
+	);
+	assert(
+		!flatten(tree).some((n) => n.type === "input" || n.type === "textarea"),
+	);
+	const voice = new Blob(["voice"], { type: "audio/webm" });
+	const recording = setup(voice);
+	recording.props.question.interactionType = "name_image";
+	recording.render();
+	recording.render();
+	assert.equal(recording.sent.length, 1);
+	assert.equal(recording.sent[0].voiceFile, voice);
+	assert(!("mockAnswer" in recording.sent[0]));
+	for (const interactionType of ["image_choice", "yes_no_choice"]) {
+		const choiceRound = setup();
+		choiceRound.props.question = {
+			id: "choice-question",
+			order: 8,
+			interactionType,
+			promptText:
+				interactionType === "image_choice"
+					? "ชี้ภาพเก้าอี้"
+					: "บ้านของคุณอยู่ที่ ลำปาง ใช่หรือไม่",
+			choices:
+				interactionType === "image_choice"
+					? [
+							{ id: "chair", imageSrc: "/chair.png" },
+							{ id: "table", imageSrc: "/table.png" },
+							{ id: "bed", imageSrc: "/bed.png" },
+						]
+					: [
+							{ id: "yes", label: "ใช่" },
+							{ id: "no", label: "ไม่ใช่" },
+						],
+		};
+		const nodes = flatten(choiceRound.render());
+		assert(
+			!nodes.some(
+				(n) => n.type === "button" && n.props["aria-label"] === "แตะเพื่อพูด",
+			),
+		);
+		const options = nodes.filter(
+			(n) =>
+				n.type === "button" &&
+				(interactionType === "image_choice"
+					? n.props["aria-label"]?.startsWith("เลือกภาพ")
+					: ["ใช่", "ไม่ใช่"].includes(n.props.children?.at(-1))),
+		);
+		assert.equal(options.length, interactionType === "image_choice" ? 3 : 2);
+		if (interactionType === "image_choice") {
+			assert.deepEqual(
+				nodes
+					.filter((n) => n.type === "image")
+					.map((n) => n.props.imageSrc)
+					.sort(),
+				["/bed.png", "/chair.png", "/table.png"],
+			);
+		}
+		options[0].props.onClick();
+		assert.equal(choiceRound.sent.length, 1);
+		assert.equal(choiceRound.sent[0].answerType, interactionType);
+		assert(choiceRound.sent[0].selectedOptionId);
+		assert.equal(choiceRound.sent[0].voiceFile, undefined);
+	}
+	const spontaneous = setup(voice);
+	spontaneous.props.question = {
+		id: "name",
+		order: 1,
+		interactionType: "voice_question",
+		promptText: "คุณชื่ออะไร",
+	};
+	const spokenTree = spontaneous.render();
+	assert.equal(spontaneous.sent[0].voiceFile, voice);
+	assert(
+		!flatten(spokenTree).some(
+			(n) => n.type === "input" || n.type === "textarea",
+		),
+	);
+});
+
+test("feedback audio continues once on end and cannot advance after cancellation", async () => {
+	const h = hooks();
+	const audios = [];
+	let continued = 0;
+	const api = load(
+		"src/features/training/hooks/useNamingMedia.ts",
+		{ react: h.react },
+		{
+			Audio: class {
+				constructor() {
+					audios.push(this);
+				}
+				play() {
+					return Promise.resolve();
+				}
+				pause() {}
+				removeAttribute() {}
+				load() {}
+			},
+			setTimeout,
+			clearTimeout,
+		},
+	);
+	const media = api.useNamingMedia(() => {});
+	await media.play("/approved.wav", () => continued++);
+	audios[0].onended();
+	audios[0].onended();
+	assert.equal(continued, 1);
+	await media.play("/another.wav", () => continued++);
+	media.stopAudio();
+	audios[1].onended();
+	assert.equal(continued, 1);
+	h.unmount();
 });

@@ -1,5 +1,3 @@
-import { Check, X } from "lucide-react";
-
 type AnswerResultFeedbackState = "correct" | "wrong" | null;
 
 type AnswerResultOverlayProps = {
@@ -12,7 +10,6 @@ type AnswerResultOverlayProps = {
 export function AnswerResultOverlay({
 	visible,
 	feedbackState,
-	correctAnswer,
 	onClose,
 }: AnswerResultOverlayProps) {
 	if (!visible || !feedbackState) return null;
@@ -26,31 +23,29 @@ export function AnswerResultOverlay({
 		>
 			<div
 				className={`mx-auto w-full max-w-xl rounded-[22px] p-6 text-center shadow-[0_18px_40px_rgba(0,0,0,0.08)] sm:rounded-[28px] sm:p-8 ${
-					isCorrect ? "bg-[#E9F9F0]" : "bg-[#FFF1F3]"
+					isCorrect ? "bg-[#E9F9F0]" : "bg-[#EAF4FC]"
 				}`}
 			>
 				<div
 					className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full text-white sm:h-20 sm:w-20 ${
-						isCorrect ? "bg-[#1FA89C]" : "bg-[#F97066]"
+						isCorrect ? "bg-[#1FA89C]" : "bg-[#5891B3]"
 					}`}
 					aria-hidden="true"
 				>
-					{isCorrect ? (
-						<Check className="h-8 w-8 sm:h-10 sm:w-10" strokeWidth={3} />
-					) : (
-						<X className="h-8 w-8 sm:h-10 sm:w-10" strokeWidth={3} />
-					)}
+					<span className="text-4xl">{isCorrect ? "🌈" : "🌱"}</span>
 				</div>
 
 				<h3 className="mt-4 text-2xl font-bold leading-tight text-[#123232] sm:mt-5 sm:text-3xl">
-					{isCorrect ? "ถูกต้อง! เก่งมากเลย" : "ยังไม่ถูกต้อง"}
+					{isCorrect ? "ถูกต้องค่ะ" : "ไม่เป็นไร ไปต่อกันนะคะ"}
 				</h3>
 
-				{!isCorrect && correctAnswer ? (
-					<p className="mt-3 text-base font-bold text-[#B42318] sm:text-lg">
-						โปรดลองอีกครั้ง
-					</p>
-				) : null}
+				<button
+					type="button"
+					onClick={onClose}
+					className="mt-5 min-h-14 rounded-2xl bg-white px-8 text-xl font-bold text-[#176e66]"
+				>
+					ต่อ
+				</button>
 			</div>
 		</div>
 	);

@@ -243,16 +243,14 @@ export const namingCatalog: CatalogSet[] = definitions.map(
 				.split("\n")
 				.map((row, index) => {
 					const [answer, stem, featureHint] = row.trim().split("|");
-					const missing = stem === "towel";
+					const missingAudio = stem === "towel";
 					return {
 						id: `${id}-${index + 1}`,
 						answer,
 						featureHint,
 						initialHint: `เริ่มต้นด้วยตัวอักษร “${answer.match(/[ก-ฮ]/)?.[0] ?? ""}”`,
-						imageSrc: missing
-							? undefined
-							: `/training_images/${folder}/${stem}.png`,
-						answerAudioSrc: missing
+						imageSrc: `/training_images/${folder}/${stem}.png`,
+						answerAudioSrc: missingAudio
 							? undefined
 							: `/training_sounds/${folder}/${stem}.wav`,
 					};
